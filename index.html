@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>模拟股市</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:#0b0f14;color:#e6edf3;font:14px/1.5 -apple-system,"PingFang SC",sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;padding:0}
+input{font:inherit;color:#e6edf3;background:#0f151d;border:1px solid #1e2937;border-radius:8px;padding:9px;width:100%;outline:none}
+.hd{display:flex;justify-content:space-between;align-items:center;padding:12px;border-bottom:1px solid #1e2937}
+.hd b{font-size:16px}.hd small{display:block;color:#7d8b9c;font-size:10px}
+.pg{display:none;padding:12px 12px 70px}.pg.on{display:block}
+.c{background:#141b24;border:1px solid #1e2937;border-radius:12px;padding:12px;margin-bottom:10px}
+.r{color:#ff5252}.g{color:#00d09c}.s{color:#7d8b9c}.m{font-variant-numeric:tabular-nums}
+.w{display:flex;align-items:center;padding:10px 2px;border-bottom:1px solid #1a2432}.w:last-child{border-bottom:0}
+.w .l{flex:1}.w .n{font-size:15px}.w .cd{font-size:11px;color:#7d8b9c}
+.w .rt{text-align:right}.w .p{font-size:16px;font-weight:600}.w .pc{font-size:11px}
+.btn{background:#e8b339;color:#1a1300;border-radius:8px;padding:9px 14px;font-weight:600}
+.btn.g2{background:#1a2432;color:#e6edf3;border:1px solid #1e2937}
+.sr{display:flex;gap:8px;margin-bottom:10px}.sr input{flex:1}
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#0e141c;border-top:1px solid #1e2937}
+.nav button{flex:1;padding:9px 0;font-size:11px;color:#7d8b9c}.nav button.on{color:#e8b339}
+#dt{position:fixed;inset:0;background:#0b0f14;transform:translateX(102%);transition:.2s;overflow:auto}
+#dt.on{transform:none}
+.dh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid #1e2937;position:sticky;top:0;background:#0b0f14}
+.dh b{flex:1}.dh button{font-size:22px;color:#7d8b9c}
+.q{padding:10px 14px}.qp{font-size:28px;font-weight:700}.qc{font-size:13px}
+.qm{font-size:11px;color:#7d8b9c;margin-top:6px}
+canvas{display:block;width:100%;height:210px}
+.lv{display:flex;justify-content:space-between;font-size:12px;padding:3px 14px}
+.lv span:nth-child(2){flex:1;text-align:right;margin-right:16px}
+.f{padding:10px 12px}.f .ln{display:flex;gap:8px;margin-bottom:8px}
+.acts{display:flex;gap:8px}.acts button{flex:1;padding:12px;border-radius:10px;font-size:16px;font-weight:600}
+.buy{background:#ff5252;color:#fff}.sell{background:#00d09c;color:#04241b}
+.oh{font-size:12px;color:#7d8b9c;margin:8px 0 4px}
+.st{display:flex;justify-content:space-between;padding:5px 0;font-size:13px}.st .k{color:#7d8b9c}
+.big{font-size:25px;font-weight:700}
+#ts{position:fixed;left:50%;bottom:80px;transform:translateX(-50%);background:#1e2834;padding:9px 14px;border-radius:9px;font-size:13px;opacity:0;transition:.2s;pointer-events:none;max-width:80vw;text-align:center}
+#ts.on{opacity:1}
+.emp{text-align:center;color:#7d8b9c;padding:22px 0;font-size:13px}
+.note{font-size:11px;color:#7d8b9c;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="hd"><b>模拟股市<small id="ck">v1 加载中…</small></b></div>
+<div class="pg on" id="p1"><div class="sr"><input id="q" placeholder="输入6位代码添加自选"><button class="btn" id="add">添加</button></div><div class="c" id="wl"></div></div>
+<div class="pg" id="p2"><div class="c"><div class="oh">持仓</div><div id="pl"></div></div></div>
+<div class="pg" id="p3"><div class="c"><div class="st"><span class="k">总资产</span><span class="big m" id="t1">--</span></div><div class="st"><span class="k">可用资金</span><span class="m" id="t2">--</span></div><div class="st"><span class="k">持仓市值</span><span class="m" id="t3">--</span></div><div class="st"><span class="k">浮动盈亏</span><span class="m" id="t4">--</span></div></div><div class="c note">T+1 · 买入100股整数倍 · 佣金万2.5（最低5元）· 卖出印花税0.05% · 过户费0.001%</div></div>
+<div class="nav"><button class="on" data-p="1">★ 自选</button><button data-p="2">▤ 持仓</button><button data-p="3">☰ 我的</button></div>
+<div id="dt"><div class="dh"><button id="bk">‹</button><b id="dn">--</b></div><div class="q"><div class="qp m" id="dp">--</div><div class="qc m" id="dc"></div><div class="qm" id="dm"></div></div><canvas id="cv"></canvas><div id="lv"></div><div class="f"><div class="ln"><input id="ip" type="number" step="0.01" placeholder="价格"><input id="iq" type="number" step="100" placeholder="数量(股)"></div><div class="note" id="fi">手续费：--</div><div class="acts"><button class="buy" id="bb">买入</button><button class="sell" id="bs">卖出</button></div></div></div>
+<div id="ts"></div>
+<script>
+window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;background:#c00;color:#fff;padding:8px;font-size:12px;z-index:999';d.textContent='错误：'+m+' 第'+l+'行';document.body.appendChild(d);return false};
+</script>
+<script src="app.js?v=1"></script>
+</body>
+</html>
