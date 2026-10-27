@@ -84,7 +84,7 @@ function drawTrend(s){
  var dev=Math.max(Math.abs(mx-pre),Math.abs(mn-pre))*1.15||pre*0.01;
  mx=pre+dev;mn=pre-dev;
  var L=6,R=w-44,T=8,PH=h*0.62,VY=T+PH+10,VH=h-VY-12;
- function X(i){return L+(R-L)*i/Math.max(1,240)}
+ function X(i){var mm=(ls[i]&&ls[i].m!=null)?ls[i].m:i;return L+(R-L)*mm/240}
  function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
  x.strokeStyle='#1a2432';x.fillStyle='#7d8b9c';x.font='10px sans-serif';x.textAlign='right';
  for(var i=0;i<=3;i++){var y=T+PH*i/3;x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();x.fillText((mx-(mx-mn)*i/3).toFixed(2),w-2,y+3)}
