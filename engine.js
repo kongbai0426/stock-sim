@@ -1,5 +1,6 @@
-// 市场引擎 v4：连续成交量、U形分布、放量尖峰
+// 市场引擎 v6：按分钟定位，成交只更新当前点
 var M={stocks:[],day:1,minute:0,phase:'open',index:1000,base:0,news:[],tick:0,seed:20261027,mood:0,secMood:[]};
+var ENGINE_VER='v6';
 var DAILY_VOL=[0.010,0.020,0.030,0.032,0.025,0.022,0.026,0.030,0.020,0.032,0.020,0.025];
 var TURNOVER=[0.003,0.008,0.025,0.030,0.020,0.012,0.020,0.025,0.012,0.030,0.010,0.015];
 function rnd(){M.seed=(M.seed*1103515245+12345)&0x7fffffff;return M.seed/0x7fffffff}
@@ -18,9 +19,10 @@ function initMarket(){
   genHistory(st,price);
   return st;
  });
- for(var k=0;k<M.stocks.length;k++){buildBook(M.stocks[k]);M.stocks[k].hist=[{p:M.stocks[k].price,v:0}]}
+ for(var k=0;k<M.stocks.length;k++){buildBook(M.stocks[k]);M.stocks[k].hist=[{p:M.stocks[k].price,v:0,m:0}]}
  M.base=M.stocks.reduce(function(s,x){return s+x.prev*x.shares},0);
  M.index=1000;M.day=1;M.minute=0;M.phase='open';M.news=[];M.tick=0;
+ document.title='模拟股市 '+ENGINE_VER;
 }
 function genHistory(st,price){
  var cl=[],p=price;
@@ -72,8 +74,7 @@ function stepMinute(){
   if(rnd()<0.012)bv*=2+rnd()*4;
   var v=Math.max(1,Math.round(bv));
   st.vol+=v;st.amount+=v*st.price;
-  st.hist.push({p:st.price,v:v});
-  if(st.hist.length>241)st.hist.shift();
+  st.hist.push({p:st.price,v:v,m:M.minute});
   buildBook(st);
  }
  var sum=0;
@@ -98,8 +99,10 @@ function applyImpact(code,side,qtyShares,px){
  if(st.price>st.high)st.high=st.price;
  if(st.price<st.low)st.low=st.price;
  st.vol+=Math.round(qtyShares/100);st.amount+=amt;
- st.hist.push({p:st.price,v:Math.round(qtyShares/100)});
- if(st.hist.length>241)st.hist.shift();
+ var hv=Math.round(qtyShares/100);
+ var last=st.hist[st.hist.length-1];
+ if(last&&last.m===M.minute){last.p=st.price;last.v=(last.v||0)+hv}
+ else{st.hist.push({p:st.price,v:hv,m:M.minute})}
  var spill=mag*0.18*(0.5+rnd());
  for(var i=0;i<M.stocks.length;i++){
   var o=M.stocks[i];
@@ -111,8 +114,9 @@ function applyImpact(code,side,qtyShares,px){
   o.price=r2(p2);
   if(o.price>o.high)o.high=o.price;
   if(o.price<o.low)o.low=o.price;
-  o.hist.push({p:o.price,v:0});
-  if(o.hist.length>241)o.hist.shift();
+  var lo=o.hist[o.hist.length-1];
+  if(lo&&lo.m===M.minute){lo.p=o.price}
+  else{o.hist.push({p:o.price,v:0,m:M.minute})}
   buildBook(o);
  }
  buildBook(st);
@@ -124,7 +128,7 @@ function closeDay(){
   s.kline.push({d:M.day,o:s.open,h:s.high,l:s.low,c:s.price,v:s.vol});
   if(s.kline.length>120)s.kline.shift();
   s.prev=s.price;s.open=s.price;s.high=s.price;s.low=s.price;s.vol=0;s.amount=0;
-  s.hist=[{p:s.price,v:0}];s.tempMove=0;
+  s.hist=[{p:s.price,v:0,m:0}];s.tempMove=0;
   s.up=r2(s.price*1.1);s.dn=r2(s.price*0.9);
  }
  M.day++;M.minute=0;M.phase='open';
