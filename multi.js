@@ -1,25 +1,6 @@
-// 多周期K线补丁：分时/5/15/30/60分/日/周/月 + 均线数值
+// 多周期K线补丁（只作用于个股详情页）
 (function(){
- var tb=document.querySelector('.tabs2');
- var P=[['t','分时'],['m5','5分'],['m15','15分'],['m30','30分'],['m60','60分'],['k','日K'],['w','周K'],['m','月K']];
- if(tb){
-  for(var i=0;i<P.length;i++){
-   if(!tb.querySelector('[data-c="'+P[i][0]+'"]')){
-    var nb=document.createElement('button');
-    nb.className='ct';nb.setAttribute('data-c',P[i][0]);nb.textContent=P[i][1];
-    tb.appendChild(nb);
-   }
-  }
-  for(var j=0;j<P.length;j++){var el=tb.querySelector('[data-c="'+P[j][0]+'"]');if(el)tb.appendChild(el)}
-  [].forEach.call(tb.querySelectorAll('.ct'),function(b){
-   b.onclick=function(){
-    mode=b.getAttribute('data-c');
-    [].forEach.call(tb.querySelectorAll('.ct'),function(x){x.classList.toggle('on',x===b)});
-    dr();
-   };
-  });
- }
- window.drawTrend=function(s){
+ function drawTrend(s){
   var c=document.getElementById('cv'),r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width,h=230;
   c.width=w*d;c.height=h*d;c.style.height=h+'px';
   var x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,h);
@@ -48,7 +29,7 @@
   x.strokeStyle='#e8b339';x.lineWidth=1;x.beginPath();avg.forEach(function(p,i){var yy=Y(p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   x.strokeStyle='#e6edf3';x.lineWidth=1.4;x.beginPath();ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   var last=ls[ls.length-1];x.fillStyle='#e6edf3';x.beginPath();x.arc(X(ls.length-1),Y(last.p),2.5,0,6.283);x.fill();
- };
+ }
  function rr(n){n=(n*1103515245+12345)&0x7fffffff;return((n>>>8)&0xffff)/65535}
  function getK60(s){
   if(s.k60&&s.k60.length)return s.k60;
@@ -67,7 +48,7 @@
  }
  function daily(s){
   var a=s.kline.slice();
-  if(M&&M.day!=null){
+  if(window.M&&M.day!=null){
    if(!a.length||a[a.length-1].d!==M.day)a.push({d:M.day,o:s.open,h:s.high,l:s.low,c:s.price,v:s.vol});
    else{var l=a[a.length-1];l.c=s.price;if(s.high>l.h)l.h=s.high;if(s.low<l.l)l.l=s.low;l.v=s.vol}
   }
@@ -75,7 +56,7 @@
  }
  function live60(s){
   var a=getK60(s).slice();
-  if(!M||M.minute==null)return a;
+  if(!window.M||M.minute==null)return a;
   var seg=Math.floor(M.minute/60),lo=seg*60,hi=lo+60,pts=[];
   for(var i=0;i<s.hist.length;i++){var h=s.hist[i];if(h.m>=lo&&h.m<hi)pts.push(h)}
   if(!pts.length)return a;
@@ -143,6 +124,7 @@
    x.fillStyle=cols[q];x.fillText(t2,px,12);px+=x.measureText(t2).width+12;
   }
  }
+ window.drawTrend=drawTrend;
  window.dr=function(){
   var s=getStock(sel);if(!s)return;
   if(mode==='t'){drawTrend(s);return}
@@ -157,4 +139,25 @@
   else ds=daily(s);
   drawBars(ds.slice(-200));
  };
+ var tries=0;
+ function setup(){
+  var tb=document.querySelector('#dt .tabs2');
+  if(!tb){if(tries++<20)setTimeout(setup,300);return}
+  var P=[['t','分时'],['m5','5分'],['m15','15分'],['m30','30分'],['m60','60分'],['k','日K'],['w','周K'],['m','月K']];
+  for(var i=0;i<P.length;i++){
+   if(!tb.querySelector('[data-c="'+P[i][0]+'"]')){
+    var nb=document.createElement('button');nb.className='ct';nb.setAttribute('data-c',P[i][0]);nb.textContent=P[i][1];tb.appendChild(nb);
+   }
+  }
+  for(var j=0;j<P.length;j++){var el=tb.querySelector('[data-c="'+P[j][0]+'"]');if(el)tb.appendChild(el)}
+  [].forEach.call(tb.querySelectorAll('.ct'),function(b){
+   b.onclick=function(){
+    mode=b.getAttribute('data-c');
+    [].forEach.call(tb.querySelectorAll('.ct'),function(x){x.classList.toggle('on',x===b)});
+    dr();
+   };
+  });
+  document.title=(document.title||'模拟股市')+' M';
+ }
+ setup();
 })();
