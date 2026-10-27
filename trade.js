@@ -1,4 +1,4 @@
-// 交易与结算：订单、撮合、资金、费用、T+1、对账
+// 交易与结算 v2：撮合、费用、T+1、成交冲击、资金设置、对账
 function feeC(amountC,side){
  var comm=Math.max(500,Math.round(amountC*0.00025));
  var stamp=side==='sell'?Math.round(amountC*0.0005):0;
@@ -72,6 +72,7 @@ function fill(o,px,q){
   if(o.filled>=o.qty)o.status='filled';
   ACC.trades.unshift({id:o.id,code:o.code,name:o.name,side:'sell',price:px,qty:q,amountC:amountC,feeC:fee2,day:M.day,time:fmtTime(M.minute)});
  }
+ applyImpact(o.code,o.side,q,px);
 }
 function matchAll(){
  for(var i=0;i<ACC.orders.length;i++){
@@ -100,6 +101,20 @@ function cancelOrder(id){
  if(o.side==='buy'){ACC.cashC+=o.frozenC;ACC.frozenC-=o.frozenC;o.frozenC=0}
  else{var p=ACC.pos[o.code];if(p)p.avail+=(o.qty-o.filled)}
  o.status='cancelled';saveAcc();
+ return true;
+}
+function setCapital(yuan){
+ var cents=Math.round(yuan*100);
+ if(!(cents>=0))return false;
+ for(var i=0;i<ACC.orders.length;i++){
+  var o=ACC.orders[i];
+  if(o.status==='pending'){
+   if(o.side==='buy'){ACC.cashC+=o.frozenC;ACC.frozenC-=o.frozenC;o.frozenC=0}
+   else{var p=ACC.pos[o.code];if(p)p.avail+=(o.qty-o.filled)}
+   o.status='cancelled';
+  }
+ }
+ ACC.frozenC=0;ACC.cashC=cents;saveAcc();
  return true;
 }
 function marketValueC(){
