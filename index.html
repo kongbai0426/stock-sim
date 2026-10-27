@@ -15,7 +15,6 @@ input{font:inherit;color:#e6edf3;background:#0f151d;border:1px solid #1e2937;bor
 .ix{text-align:right;font-size:12px}.ix .s{display:block;color:#7d8b9c;font-size:10px}
 .ctrl{display:flex;gap:8px;padding:8px 12px;border-bottom:1px solid #1e2937;background:#0e141c}
 .ctrl button{flex:1;padding:8px 0;border-radius:8px;background:#1a2432;border:1px solid #1e2937;color:#c9d4e0;font-size:12px}
-.ctrl button:active{background:#243040}
 .pg{display:none;padding:12px 12px 72px}.pg.on{display:block}
 .c{background:#141b24;border:1px solid #1e2937;border-radius:12px;padding:12px;margin-bottom:10px}
 .r{color:#ff5252}.g{color:#00d09c}.s{color:#7d8b9c}.m{font-variant-numeric:tabular-nums}
@@ -40,6 +39,7 @@ input{font:inherit;color:#e6edf3;background:#0f151d;border:1px solid #1e2937;bor
 .tabs2 button{padding:5px 14px;border-radius:14px;background:#131b25;color:#7d8b9c;font-size:12px}
 .tabs2 button.on{background:#e8b339;color:#1a1300}
 canvas{display:block;width:100%;height:230px}
+#idxCv{height:200px}
 .lv{display:flex;justify-content:space-between;font-size:12px;padding:3px 16px}
 .lv span:nth-child(2){flex:1;text-align:right;margin-right:18px}
 .f{padding:10px 12px}.f .ln{display:flex;gap:8px;margin-bottom:8px}
@@ -77,8 +77,20 @@ canvas{display:block;width:100%;height:230px}
 </div>
 
 <div class="pg" id="p2">
- <div class="tabs"><button id="bUp" class="on">涨幅榜</button><button id="bDown">跌幅榜</button></div>
- <div class="c" id="bl"></div>
+ <div class="tabs"><button id="tabRank" class="on">涨跌榜</button><button id="tabSec">板块指数</button></div>
+ <div id="rankWrap">
+  <div class="tabs"><button id="bUp" class="on">涨幅榜</button><button id="bDown">跌幅榜</button></div>
+  <div class="c" id="bl"></div>
+ </div>
+ <div id="secWrap" style="display:none">
+  <div class="c">
+   <div class="oh"><span id="idxTitle">上证指数</span> <span id="idxVal" class="m"></span>
+    <button id="secBack" style="display:none;float:right;color:#e8b339;font-size:12px">返回板块</button>
+   </div>
+   <canvas id="idxCv"></canvas>
+  </div>
+  <div class="c"><div id="secList"></div></div>
+ </div>
 </div>
 
 <div class="pg" id="p3">
@@ -136,7 +148,7 @@ window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssTe
 </script>
 <script>
 (function(){
- var fs=['stocks.js','engine.js','trade.js','app.js','fix2.js'],t=Date.now();
+ var fs=['stocks.js','engine.js','trade.js','app.js','fix2.js','sector.js'],t=Date.now();
  for(var i=0;i<fs.length;i++){document.write('<script src="'+fs[i]+'?v='+t+'"><\/script>');}
 })();
 </script>
