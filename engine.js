@@ -1,4 +1,4 @@
-// 市场引擎 v3：历史K线、成交量、平方根冲击、冲击衰减、板块联动
+// 市场引擎 v4：连续成交量、U形分布、放量尖峰
 var M={stocks:[],day:1,minute:0,phase:'open',index:1000,base:0,news:[],tick:0,seed:20261027,mood:0,secMood:[]};
 var DAILY_VOL=[0.010,0.020,0.030,0.032,0.025,0.022,0.026,0.030,0.020,0.032,0.020,0.025];
 var TURNOVER=[0.003,0.008,0.025,0.030,0.020,0.012,0.020,0.025,0.012,0.030,0.010,0.015];
@@ -14,7 +14,7 @@ function initMarket(){
    shares:sh,floatShares:sh*0.72,pe:pe,eps:r2(price/pe),
    up:r2(price*1.1),dn:r2(price*0.9),baseCap:price*sh,tempMove:0,
    hist:[],kline:[],book:{bids:[],asks:[]},
-   volBase:Math.max(120,Math.round(sh*6.25))};
+   volBase:Math.max(60,Math.round(sh*4.5))};
   genHistory(st,price);
   return st;
  });
@@ -30,7 +30,7 @@ function genHistory(st,price){
   var o=r2(j?cl[j-1]:c*(1+gauss()*0.005));
   var hi=r2(Math.max(o,c)*(1+Math.abs(gauss())*0.006));
   var lo=r2(Math.min(o,c)*(1-Math.abs(gauss())*0.006));
-  var v=Math.max(100,Math.round(st.volBase*240*(0.6+rnd()*0.8)/100)*100);
+  var v=Math.max(1,Math.round(st.volBase*240*Math.exp(gauss()*0.35)*(0.55+rnd()*0.9)));
   st.kline.push({d:j-119,o:o,h:hi,l:lo,c:c,v:v});
  }
  st.price=r2(cl[119]);st.prev=st.price;st.open=st.price;st.high=st.price;st.low=st.price;
@@ -67,8 +67,10 @@ function stepMinute(){
   st.price=r2(np);
   if(st.price>st.high)st.high=st.price;
   if(st.price<st.low)st.low=st.price;
-  var v=Math.round(st.volBase*(0.6+Math.abs(ret)*300)*(0.5+rnd()*1.5));
-  v=Math.max(100,Math.round(v/100)*100);
+  var us=1+1.2*Math.exp(-M.minute/25)+0.7*Math.exp(-(240-M.minute)/25);
+  var bv=st.volBase*us*Math.exp(gauss()*0.45)*(0.45+Math.abs(ret)*260);
+  if(rnd()<0.012)bv*=2+rnd()*4;
+  var v=Math.max(1,Math.round(bv));
   st.vol+=v;st.amount+=v*st.price;
   st.hist.push({p:st.price,v:v});
   if(st.hist.length>241)st.hist.shift();
@@ -96,7 +98,7 @@ function applyImpact(code,side,qtyShares,px){
  if(st.price>st.high)st.high=st.price;
  if(st.price<st.low)st.low=st.price;
  st.vol+=Math.round(qtyShares/100);st.amount+=amt;
- st.hist.push({p:st.price,v:qtyShares});
+ st.hist.push({p:st.price,v:Math.round(qtyShares/100)});
  if(st.hist.length>241)st.hist.shift();
  var spill=mag*0.18*(0.5+rnd());
  for(var i=0;i<M.stocks.length;i++){
