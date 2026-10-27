@@ -47,7 +47,8 @@ function od(c){
  sel=c;mode='t';E('dt').classList.add('on');
  [].forEach.call(document.querySelectorAll('.ct'),function(b){b.classList.toggle('on',b.getAttribute('data-c')==='t')});
  var s=getStock(c);if(!s)return;
- E('ip').value=s.price.toFixed(2);E('iq').value='100';
+ var ask=s.book.asks[0]?s.book.asks[0].p:s.price;
+ E('ip').value=ask.toFixed(2);E('iq').value='1';
  rd();dr();
 }
 function rd(){
@@ -61,8 +62,9 @@ function rd(){
  h+='<div class="lv" style="border-top:1px solid #1e2937;border-bottom:1px solid #1e2937"><span>最新</span><span class="m">'+s.price.toFixed(2)+'</span><span class="m s">'+s.vol+'手</span></div>';
  for(var j=0;j<5;j++){var b=s.book.bids[j];h+='<div class="lv"><span>买'+(j+1)+'</span><span class="m s">'+(b?b.p.toFixed(2):'--')+'</span><span class="m s">'+(b?b.q:'')+'</span></div>'}
  E('lv').innerHTML=h;
- var lots=Math.floor(ACC.cashC/(s.price*10000));
- E('fi').textContent='可用 '+money(ACC.cashC)+' · 最多可买 '+(lots>0?lots*100:0)+' 股';
+ var px=parseFloat(E('ip').value)||s.price;
+ var lots=Math.floor(ACC.cashC/(px*10000));
+ E('fi').textContent='可用 '+money(ACC.cashC)+' · 最多可买 '+(lots>0?lots:0)+' 手 · 1手=100股';
 }
 function cv2(hh){
  var c=E('cv'),r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width;
@@ -71,44 +73,77 @@ function cv2(hh){
  return{x:x,w:w,h:hh};
 }
 function drawTrend(s){
- var o=cv2(200),x=o.x,w=o.w,h=o.h,ls=s.hist;
+ var o=cv2(230),x=o.x,w=o.w,h=o.h,ls=s.hist;
  if(ls.length<2){x.fillStyle='#7d8b9c';x.font='12px sans-serif';x.fillText('等待行情…',12,30);return}
  var pre=s.prev,mx=pre,mn=pre;
- ls.forEach(function(p){if(p>mx)mx=p;if(p<mn)mn=p});
- var pd=(mx-mn)*0.15||pre*0.01;mx+=pd;mn-=pd;
- var L=6,R=w-42,T=8,PH=h*0.8;
+ ls.forEach(function(v){if(v.p>mx)mx=v.p;if(v.p<mn)mn=v.p});
+ var pd=(mx-mn)*0.12||pre*0.01;mx+=pd;mn-=pd;
+ var L=6,R=w-44,T=8,PH=h*0.62,VY=T+PH+10,VH=h-VY-12;
  function X(i){return L+(R-L)*i/Math.max(1,240)}
  function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
  x.strokeStyle='#1a2432';x.fillStyle='#7d8b9c';x.font='10px sans-serif';x.textAlign='right';
  for(var i=0;i<=3;i++){var y=T+PH*i/3;x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();x.fillText((mx-(mx-mn)*i/3).toFixed(2),w-2,y+3)}
  x.setLineDash([3,3]);x.strokeStyle='#4a5868';x.beginPath();x.moveTo(L,Y(pre));x.lineTo(R,Y(pre));x.stroke();x.setLineDash([]);
+ var vmax=0;ls.forEach(function(v){if(v.v>vmax)vmax=v.v});vmax=vmax||1;
+ var bw=Math.max(1,(R-L)/240*0.7);
+ ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.5)':'rgba(0,208,156,.5)';var vh=v.v/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,vh)});
+ var sp=0,sv=0,avgs=[];
+ ls.forEach(function(v){sp+=v.p*v.v;sv+=v.v;avgs.push(sv?sp/sv:v.p)});
+ x.strokeStyle='#e8b339';x.lineWidth=1;x.beginPath();
+ avgs.forEach(function(p,i){var yy=Y(p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
  x.strokeStyle='#e6edf3';x.lineWidth=1.3;x.beginPath();
- ls.forEach(function(p,i){var xx=X(i),yy=Y(p);i?x.lineTo(xx,yy):x.moveTo(xx,yy)});
- x.stroke();
+ ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
  x.fillStyle='#7d8b9c';x.font='10px sans-serif';x.textAlign='left';x.fillText('09:30',L,h-2);x.textAlign='right';x.fillText('15:00',R,h-2);
 }
+function maArr(ds,k){
+ var out=[],sum=0;
+ for(var i=0;i<ds.length;i++){sum+=ds[i].c;if(i>=k)sum-=ds[i-k].c;out.push(i>=k-1?sum/k:null)}
+ return out;
+}
 function drawK(s){
- var o=cv2(200),x=o.x,w=o.w,h=o.h,ds=s.kline;
- if(!ds.length){x.fillStyle='#7d8b9c';x.font='12px sans-serif';x.fillText('暂无K线，收盘后生成',12,30);return}
+ var o=cv2(230),x=o.x,w=o.w,h=o.h,ds=s.kline;
+ if(!ds.length){x.fillStyle='#7d8b9c';x.font='12px sans-serif';x.fillText('暂无K线',12,30);return}
  var mx=-1e9,mn=1e9;
  ds.forEach(function(v){if(v.h>mx)mx=v.h;if(v.l<mn)mn=v.l});
  var pd=(mx-mn)*0.1||1;mx+=pd;mn-=pd;
- var L=6,R=w-42,T=8,PH=h*0.86,n=ds.length,cw=(R-L)/n;
+ var L=6,R=w-44,T=8,PH=h*0.6,VY=T+PH+10,VH=h-VY-12,n=ds.length,cw=(R-L)/n;
  function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
  x.strokeStyle='#1a2432';x.fillStyle='#7d8b9c';x.font='10px sans-serif';x.textAlign='right';
  for(var i=0;i<=3;i++){var y=T+PH*i/3;x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();x.fillText((mx-(mx-mn)*i/3).toFixed(2),w-2,y+3)}
  ds.forEach(function(v,i){var up=v.c>=v.o,col=up?'#ff5252':'#00d09c',cx=L+cw*i+cw/2,bw=Math.max(1,cw*0.6);
-  x.strokeStyle=col;x.fillStyle=col;x.beginPath();x.moveTo(cx,Y(v.h));x.lineTo(cx,Y(v.l));x.stroke();
+  x.strokeStyle=col;x.fillStyle=col;x.lineWidth=1;x.beginPath();x.moveTo(cx,Y(v.h));x.lineTo(cx,Y(v.l));x.stroke();
   var y1=Y(Math.max(v.o,v.c)),y2=Y(Math.min(v.o,v.c));
   if(up){x.fillStyle='#0b0f14';x.fillRect(cx-bw/2,y1,bw,Math.max(1,y2-y1));x.strokeRect(cx-bw/2,y1,bw,Math.max(1,y2-y1))}else x.fillRect(cx-bw/2,y1,bw,Math.max(1,y2-y1));
  });
+ var vmax=0;ds.forEach(function(v){if(v.v>vmax)vmax=v.v});vmax=vmax||1;
+ ds.forEach(function(v,i){var up=v.c>=v.o;x.fillStyle=up?'rgba(255,82,82,.5)':'rgba(0,208,156,.5)';var vh=v.v/vmax*VH;x.fillRect(L+cw*i+cw*0.2,VY+VH-vh,cw*0.6,vh)});
+ var mas=[{k:5,c:'#e8b339'},{k:10,c:'#6aa9ff'},{k:30,c:'#c06aff'},{k:60,c:'#00d09c'}];
+ x.lineWidth=1;
+ mas.forEach(function(m){
+  var arr=maArr(ds,m.k);x.strokeStyle=m.c;x.beginPath();var started=false;
+  for(var i=0;i<arr.length;i++){if(arr[i]==null)continue;var xx=L+cw*i+cw/2,yy=Y(arr[i]);if(!started){x.moveTo(xx,yy);started=true}else x.lineTo(xx,yy)}
+  x.stroke();
+ });
+ x.font='10px sans-serif';x.textAlign='left';
+ x.fillStyle='#e8b339';x.fillText('MA5',L,12);
+ x.fillStyle='#6aa9ff';x.fillText('MA10',L+34,12);
+ x.fillStyle='#c06aff';x.fillText('MA30',L+74,12);
+ x.fillStyle='#00d09c';x.fillText('MA60',L+114,12);
 }
 function dr(){var s=getStock(sel);if(!s)return;if(mode==='t')drawTrend(s);else drawK(s)}
-function doTrade(side){
+function doTrade(kind){
  if(!sel)return ts('先选股票');
- var r=placeOrder(sel,side,parseFloat(E('ip').value),parseInt(E('iq').value));
+ var s=getStock(sel);
+ var lots=parseInt(E('iq').value);
+ if(!(lots>0))return ts('请输入手数');
+ var q=lots*100,p;
+ if(kind==='buyNow')p=s.book.asks[0]?s.book.asks[0].p:s.price;
+ else if(kind==='sellNow')p=s.book.bids[0]?s.book.bids[0].p:s.price;
+ else p=parseFloat(E('ip').value);
+ var side=(kind==='buyNow'||kind==='buyLimit')?'buy':'sell';
+ var r=placeOrder(sel,side,p,q);
  ts(r.msg);
- if(r.ok){rp();rm();rd()}
+ if(r.ok){rp();rm();rd();dr()}
 }
 function go(n){
  [].forEach.call(document.querySelectorAll('.pg'),function(p){p.classList.toggle('on',p.id==='p'+n)});
@@ -124,8 +159,10 @@ E('bk2').onclick=function(){E('dt').classList.remove('on')};
 }});
 E('bUp').onclick=function(){boardUp=true;E('bUp').className='on';E('bDown').className='';rb()};
 E('bDown').onclick=function(){boardUp=false;E('bDown').className='on';E('bUp').className='';rb()};
-E('bb').onclick=function(){doTrade('buy')};
-E('bs').onclick=function(){doTrade('sell')};
+E('bbNow').onclick=function(){doTrade('buyNow')};
+E('bsNow').onclick=function(){doTrade('sellNow')};
+E('bbLimit').onclick=function(){doTrade('buyLimit')};
+E('bsLimit').onclick=function(){doTrade('sellLimit')};
 E('add').onclick=function(){
  var v=E('q').value.trim();
  if(!v)return;
@@ -143,6 +180,11 @@ E('im').onclick=function(){
 };
 E('rs').onclick=function(){
  if(confirm('重置账户？')){ACC={cashC:100000000,frozenC:0,pos:{},orders:[],trades:[],seq:1};saveAcc();rp();rm();ts('已重置')}
+};
+E('setcap').onclick=function(){
+ var w=parseFloat(E('cap').value);
+ if(!(w>=0))return ts('请输入资金（万元）');
+ if(setCapital(w*10000)){ts('资金已设为 '+(w*10000).toFixed(0)+' 元');rm();rd()}
 };
 setInterval(function(){
  stepMinute();matchAll();
