@@ -1,6 +1,6 @@
-// 市场引擎 v6：按分钟定位，成交只更新当前点
+// 市场引擎 v7：均值回归 + 公允价漂移，避免单边
 var M={stocks:[],day:1,minute:0,phase:'open',index:1000,base:0,news:[],tick:0,seed:20261027,mood:0,secMood:[]};
-var ENGINE_VER='v6';
+var ENGINE_VER='v7';
 var DAILY_VOL=[0.010,0.020,0.030,0.032,0.025,0.022,0.026,0.030,0.020,0.032,0.020,0.025];
 var TURNOVER=[0.003,0.008,0.025,0.030,0.020,0.012,0.020,0.025,0.012,0.030,0.010,0.015];
 function rnd(){M.seed=(M.seed*1103515245+12345)&0x7fffffff;return M.seed/0x7fffffff}
@@ -17,6 +17,7 @@ function initMarket(){
    hist:[],kline:[],book:{bids:[],asks:[]},
    volBase:Math.max(60,Math.round(sh*4.5))};
   genHistory(st,price);
+  st.lf=Math.log(st.price);st.lfair=st.lf;
   return st;
  });
  for(var k=0;k<M.stocks.length;k++){buildBook(M.stocks[k]);M.stocks[k].hist=[{p:M.stocks[k].price,v:0,m:0}]}
@@ -50,23 +51,19 @@ function stepMinute(){
  if(M.phase!=='open')return;
  M.minute++;M.tick++;
  if(M.minute>240){closeDay();return}
- M.mood=M.mood*0.985+gauss()*0.015;
- for(var i=0;i<M.secMood.length;i++)M.secMood[i]=M.secMood[i]*0.97+gauss()*0.03;
+ M.mood=M.mood*0.94+gauss()*0.02;
+ for(var i=0;i<M.secMood.length;i++)M.secMood[i]=M.secMood[i]*0.93+gauss()*0.025;
  for(var k=0;k<M.stocks.length;k++){
   var st=M.stocks[k];
-  var drift=M.mood*0.0006+M.secMood[st.si]*0.001;
-  var vol=0.0018+((st.si===2||st.si===3||st.si===7)?0.0012:0);
-  var ret=drift+vol*gauss();
-  if(rnd()<0.0015)ret+=(rnd()<0.5?-1:1)*0.015;
-  var np=st.price*(1+ret);
-  if(st.tempMove){
-   var back=st.tempMove*0.04;
-   np=np*(1-back);
-   st.tempMove-=back;
-   if(Math.abs(st.tempMove)<0.0002)st.tempMove=0;
-  }
+  st.lfair+=M.mood*0.00025+M.secMood[st.si]*0.0005+0.0006*gauss();
+  var dev=st.lf-st.lfair;
+  var ret=-0.02*dev+0.0024*gauss();
+  if(rnd()<0.001)ret+=(rnd()<0.5?-1:1)*0.012;
+  st.lf+=ret;
+  var np=Math.exp(st.lf);
   np=Math.min(st.up,Math.max(st.dn,np));
   st.price=r2(np);
+  st.lf=Math.log(st.price);
   if(st.price>st.high)st.high=st.price;
   if(st.price<st.low)st.low=st.price;
   var us=1+1.2*Math.exp(-M.minute/25)+0.7*Math.exp(-(240-M.minute)/25);
@@ -92,10 +89,10 @@ function applyImpact(code,side,qtyShares,px){
  if(mag>0.085)mag=0.085;
  var dir=side==='buy'?1:-1;
  var move=dir*mag*(0.8+0.4*rnd());
- var np=st.price*(1+move);
- np=Math.min(st.up,Math.max(st.dn,np));
- st.tempMove+=move*0.7;
- st.price=r2(np);
+ st.lfair+=move*0.3;
+ st.lf+=move;
+ var np=Math.min(st.up,Math.max(st.dn,Math.exp(st.lf)));
+ st.price=r2(np);st.lf=Math.log(st.price);
  if(st.price>st.high)st.high=st.price;
  if(st.price<st.low)st.low=st.price;
  st.vol+=Math.round(qtyShares/100);st.amount+=amt;
@@ -108,10 +105,9 @@ function applyImpact(code,side,qtyShares,px){
   var o=M.stocks[i];
   if(o===st||o.si!==st.si)continue;
   var m2=dir*spill*(0.6+0.6*rnd());
-  var p2=o.price*(1+m2);
-  p2=Math.min(o.up,Math.max(o.dn,p2));
-  o.tempMove+=m2*0.7;
-  o.price=r2(p2);
+  o.lfair+=m2*0.3;o.lf+=m2;
+  var p2=Math.min(o.up,Math.max(o.dn,Math.exp(o.lf)));
+  o.price=r2(p2);o.lf=Math.log(o.price);
   if(o.price>o.high)o.high=o.price;
   if(o.price<o.low)o.low=o.price;
   var lo=o.hist[o.hist.length-1];
