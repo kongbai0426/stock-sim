@@ -1,9 +1,16 @@
-// 市场引擎 v7：均值回归 + 公允价漂移，避免单边
+// 市场引擎 v8：更稳的随机数 + 公允价带锚 + 波动率对齐历史
 var M={stocks:[],day:1,minute:0,phase:'open',index:1000,base:0,news:[],tick:0,seed:20261027,mood:0,secMood:[]};
-var ENGINE_VER='v7';
+var ENGINE_VER='v8';
 var DAILY_VOL=[0.010,0.020,0.030,0.032,0.025,0.022,0.026,0.030,0.020,0.032,0.020,0.025];
 var TURNOVER=[0.003,0.008,0.025,0.030,0.020,0.012,0.020,0.025,0.012,0.030,0.010,0.015];
-function rnd(){M.seed=(M.seed*1103515245+12345)&0x7fffffff;return M.seed/0x7fffffff}
+function rnd(){
+ var x=M.seed;
+ x^=x<<13;x>>>=0;
+ x^=x>>>17;
+ x^=x<<5;x>>>=0;
+ M.seed=x;
+ return x/4294967296;
+}
 function gauss(){var u=0,v=0;while(u===0)u=rnd();while(v===0)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v)}
 function r2(x){return Math.round(x*100)/100}
 function initMarket(){
@@ -17,7 +24,9 @@ function initMarket(){
    hist:[],kline:[],book:{bids:[],asks:[]},
    volBase:Math.max(60,Math.round(sh*4.5))};
   genHistory(st,price);
-  st.lf=Math.log(st.price);st.lfair=st.lf;
+  st.lf=Math.log(st.price);
+  st.lfair=st.lf;
+  st.anchor=st.lf;
   return st;
  });
  for(var k=0;k<M.stocks.length;k++){buildBook(M.stocks[k]);M.stocks[k].hist=[{p:M.stocks[k].price,v:0,m:0}]}
@@ -55,9 +64,9 @@ function stepMinute(){
  for(var i=0;i<M.secMood.length;i++)M.secMood[i]=M.secMood[i]*0.93+gauss()*0.025;
  for(var k=0;k<M.stocks.length;k++){
   var st=M.stocks[k];
-  st.lfair+=M.mood*0.00025+M.secMood[st.si]*0.0005+0.0006*gauss();
+  st.lfair+=-0.002*(st.lfair-st.anchor)+M.mood*0.0002+M.secMood[st.si]*0.0004+0.0012*gauss();
   var dev=st.lf-st.lfair;
-  var ret=-0.02*dev+0.0024*gauss();
+  var ret=-0.02*dev+0.0015*gauss();
   if(rnd()<0.001)ret+=(rnd()<0.5?-1:1)*0.012;
   st.lf+=ret;
   var np=Math.exp(st.lf);
