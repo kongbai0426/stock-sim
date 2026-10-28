@@ -29,7 +29,7 @@
   function E(i){return document.getElementById(i)}
   function nm(n){return window.nm?window.nm(n):Math.round(n)}
   function px(){var s=getStock(sel);return parseFloat(E('ip').value)||(s?s.price:0)}
-  function lotsMax(){var p=px();return p>0?Math.floor(ACC.cashC/(p*10000)):0}
+  function lotsMax(){var p=px();return p>0?Math.floor(ACC.cashC/(p*10000)*0.998):0}
   function sellMax(){var q=ACC.pos[sel];return q?Math.floor(q.avail/100):0}
   function refresh(){
     var s=getStock(sel);if(!s)return;
