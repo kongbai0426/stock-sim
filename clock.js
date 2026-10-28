@@ -6,6 +6,7 @@
 (function(){
   var REAL=window.stepMinute, PER=10, c=0;
   if(typeof REAL!=='function')return;
+  window.__stepReal=REAL;
   function fix(st){
     var p=Math.exp(st.lf);
     if(p>st.up)p=st.up;
