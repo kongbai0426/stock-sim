@@ -1,4 +1,5 @@
-/* tradepanel.js —— 交易面板改版（同花顺风格：价格/数量步进 + 快捷键 + 大按钮） */
+/* tradepanel.js v2 —— 交易面板（同花顺风格）
+   v2：全仓留手续费余量；卖出时按可卖算仓位；切换买卖自动换对手价 */
 (function(){
   var f=document.querySelector('#dt .f');if(!f)return;
   var css=document.createElement('style');
@@ -24,7 +25,6 @@
    +'<div class="tpq"><button data-k="1">全仓</button><button data-k="0.5">1/2仓</button><button data-k="0.333">1/3仓</button>'
    +'<button data-k="0.25">1/4仓</button><button data-k="0.667">2/3仓</button><button data-a="k1000">1000元</button></div>'
    +'<button id="tgo" class="tgo">买入</button><div class="note" id="fi">--</div></div>';
-  if(window.MISS)MISS.length=0;
   var side='buy',amtMode=false;
   function E(i){return document.getElementById(i)}
   function nm(n){return window.nm?window.nm(n):Math.round(n)}
@@ -43,7 +43,16 @@
   f.addEventListener('click',function(ev){
     var t=ev.target;
     var a=t.getAttribute('data-a'),k=t.getAttribute('data-k'),s=t.getAttribute('data-s');
-    if(s){side=s;var st=getStock(sel);if(st&&st.book){var lv=side==='buy'?st.book.asks[0]:st.book.bids[0];E('ip').value=(lv?lv.p:st.price).toFixed(2)}[].forEach.call(f.querySelectorAll('.tpb'),function(b){b.classList.toggle('on',b.getAttribute('data-s')===side)});refresh();return}
+    if(s){
+      side=s;
+      var st=getStock(sel);
+      if(st&&st.book){
+        var lv=side==='buy'?st.book.asks[0]:st.book.bids[0];
+        E('ip').value=(lv?lv.p:st.price).toFixed(2);
+      }
+      [].forEach.call(f.querySelectorAll('.tpb'),function(b){b.classList.toggle('on',b.getAttribute('data-s')===side)});
+      refresh();return;
+    }
     if(k){var mx=side==='buy'?lotsMax():sellMax();E('iq').value=Math.max(0,Math.floor(mx*parseFloat(k)));return}
     if(a==='px+')E('ip').value=(px()+0.01).toFixed(2);
     else if(a==='px-')E('ip').value=Math.max(0.01,px()-0.01).toFixed(2);
