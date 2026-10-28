@@ -1,28 +1,31 @@
-// 成交量事件模型 + 现手 + 分时纵轴封顶
+// 成交量 v3：保留真实成交 + 叠加背景量
 (function(){
  function E(id){return document.getElementById(id)}
+ function pct95(a){var b=a.slice().sort(function(x,y){return x-y});return Math.max(1,b[Math.floor(b.length*0.95)]||1)}
  var oldStep=window.stepMinute;
  window.stepMinute=function(){
   oldStep();
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h)continue;
+   if(s.price>s.high)s.high=s.price;
+   if(s.price<s.low)s.low=s.price;
    var was=s._wasSeal||0;
    if(was&&!s._seal)s._justBroke=true;else s._justBroke=false;
    s._wasSeal=s._seal;
    var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
    var chg=prev?Math.abs(s.price-prev)/prev:0;
    var base=s.volBase||120;
-   var v=base*(0.35+chg*350);
-   if(M.minute<=5)v*=6;
-   if(M.minute>=236)v*=2;
-   if(s._seal)v*=0.05;
-   if(s._justBroke)v*=20;
-   v=Math.max(0.2,v);
-   var old=h.v||0;
-   s.vol+=(v-old);
-   h.v=v;
-   s.lastQty=Math.max(1,Math.round(v));
+   var add=base*(0.5+chg*250);
+   if(M.minute<=5)add*=4;
+   if(M.minute>=236)add*=2;
+   if(s._seal)add*=0.1;
+   if(s._justBroke)add*=8;
+   add=Math.min(add,base*10);
+   var traded=h.v||0;
+   s.vol+=add;
+   h.v=traded+add;
+   s.lastQty=Math.round(traded>base*20?traded:add);
   }
  };
  window.drawTrend=function(s){
@@ -50,7 +53,7 @@
    x.fillText((pct>0?'+':'')+pct.toFixed(2)+'%',w-2,y+3);
   }
   x.setLineDash([3,3]);x.strokeStyle='#4a5868';x.beginPath();x.moveTo(L,Y(pre));x.lineTo(R,Y(pre));x.stroke();x.setLineDash([]);
-  var vmax=1;ls.forEach(function(v){if(v.v>vmax)vmax=v.v});
+  var vmax=pct95(ls.map(function(v){return v.v||0}));
   var bw=Math.max(1,(R-L)/240*0.7);
   ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.6)':'rgba(0,208,156,.6)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
   var sp=0,sv=0,avg=[];
@@ -66,8 +69,7 @@
   var rows=document.querySelectorAll('#lv .lv');
   for(var i=0;i<rows.length;i++){
    if(rows[i].children[0]&&rows[i].children[0].textContent==='最新'){
-    rows[i].children[2].textContent=(s.lastQty||0)+'手';
-    break;
+    rows[i].children[2].textContent=(s.lastQty||0)+'手';break;
    }
   }
  };
