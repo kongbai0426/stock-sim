@@ -44,7 +44,7 @@
     var t=ev.target;
     var a=t.getAttribute('data-a'),k=t.getAttribute('data-k'),s=t.getAttribute('data-s');
     if(s){side=s;[].forEach.call(f.querySelectorAll('.tpb'),function(b){b.classList.toggle('on',b.getAttribute('data-s')===side)});refresh();return}
-    if(k){E('iq').value=Math.floor(lotsMax()*parseFloat(k));return}
+    if(k){var mx=side==='buy'?lotsMax():sellMax();E('iq').value=Math.max(0,Math.floor(mx*parseFloat(k)));return}
     if(a==='px+')E('ip').value=(px()+0.01).toFixed(2);
     else if(a==='px-')E('ip').value=Math.max(0.01,px()-0.01).toFixed(2);
     else if(a==='q+')E('iq').value=(parseInt(E('iq').value)||0)+1;
