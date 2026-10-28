@@ -3,7 +3,7 @@
  function settleStay(){
   if(M.phase==='closed')return;
   var d=M.day,g=0;
-  while(M.day===d&&M.minute<240&&g<300){stepMinute();matchAll();g++}
+  while(M.day===d&&M.minute<240&&g<3200){(window.__stepReal||window.stepMinute)();matchAll();g++}
   if(M.day!==d)return;
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i];
