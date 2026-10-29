@@ -1,9 +1,5 @@
-/* flow.js v9 —— 游资/主力驱动行情
-   单笔金额封顶 1.2 亿；全市场每天最多发动 3 只；同一只 4 天内不重复；
-   已封涨停/跌停时不发动也不放量；推价同时推 lfair，避免被均值回归拉回成锯齿 */
+/* flow.js v10 —— 只画资金博弈（数据由 ob.js 写入 s._fl，和价格同源） */
 (function(){
- var TICK=12000;
- var R=function(){return Math.random()};
  var cv=document.getElementById('cv');
  if(cv&&!document.getElementById('fcv')){
   var f=document.createElement('canvas');
@@ -11,87 +7,6 @@
   f.style.cssText='display:block;width:100%;height:104px;margin-top:2px';
   cv.parentNode.insertBefore(f,cv.nextSibling);
  }
- var oldStep=window.stepMinute;
- window.stepMinute=function(){
-  oldStep();
-  if(M._hotDay!==M.day){M._hotDay=M.day;M._hotN=0}
-  var TSEL=sel?getStock(sel):null;
-  for(var i=0;i<M.stocks.length;i++){
-   var s=M.stocks[i],h=s.hist[s.hist.length-1];
-   if(!h)continue;
-   if(M.minute<=1||!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
-   if(M.minute<=1)s._tp=[];
-   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.08+R()*0.12),hotT:0,hotDir:1,hotQ:0};
-   var bh=s._bh;
-   var sealed=(s._seal===1||s._seal===-1)||s.price>=s.up||s.price<=s.dn;
-   if(sealed)bh.hotT=0;
-   var cool=(M.day-(s._hotDay||-99))<4;
-   if(!bh.hotT&&!sealed&&!cool&&(M._hotN||0)<3&&R()<(M.minute>=210?0.10:0.012)){
-    bh.hotT=2+Math.floor(R()*3);
-    bh.hotDir=(bh.main>0?1:-1);
-    bh.hotQ=Math.round(Math.min((s.volBase||200)*(3+R()*8),1.2e8/(s.price*100)));
-    s._hotDay=M.day;M._hotN=(M._hotN||0)+1;
-   }
-   var hot=false,hq=0,baseV=h.v||0;
-   if(bh.hotT>0&&!sealed){
-    bh.hotT--;hot=true;
-    hq=Math.round(bh.hotQ*(0.6+R()*0.6));
-    s.vol+=hq;h.v=baseV+hq;
-   }
-   var cash=baseV*100*s.price;
-   if(cash>0){
-    var oneLot=s.price*100;
-    var ticket=TICK>oneLot*1.15?TICK:oneLot*1.15;
-    var N=Math.round(cash/ticket);
-    if(N<3)N=3;if(N>300)N=300;
-    var w=[],wsum=0,n,wt;
-    for(n=0;n<N;n++){wt=Math.exp(gauss()*1.15);w.push(wt);wsum+=wt}
-    var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
-    var ret=prev?((s.price-prev)/prev):0;
-    var ds=Math.max(-1,Math.min(1,ret*150));
-    var tail=(M.minute>=210)?1.4:1;
-    var sealK=(s._seal===1)?0.30:0;
-    var acc={xl:0,l:0,m:0,s:0};
-    for(n=0;n<N;n++){
-     var amt=cash*w[n]/wsum;
-     var lots=Math.round(amt/s.price/100);
-     if(lots<1)lots=1;
-     amt=lots*100*s.price;
-     var b=amt>=1e6?'xl':amt>=2e5?'l':amt>=4e4?'m':'s';
-     var q;
-     if(b==='xl')q=0.5+bh.main*1.6*tail+ds*0.05+(R()-0.5)*0.10+sealK;
-     else if(b==='l')q=0.5+bh.main*0.9*tail+ds*0.15+(R()-0.5)*0.40+sealK;
-     else if(b==='m')q=0.5+ds*0.40+(R()-0.5)*0.25;
-     else q=0.5+ds*0.55+(R()-0.5)*0.30;
-     if(q<0.03)q=0.03;if(q>0.97)q=0.97;
-     acc[b]+=amt*(2*q-1);
-     if(s===TSEL){
-      var pp=s.price;
-      if(q>=0.5){pp=Math.round((s.price+0.01)*100)/100;if(pp>s.up)pp=s.up}
-      else{pp=Math.round((s.price-0.01)*100)/100;if(pp<s.dn)pp=s.dn}
-      if(!s._tp)s._tp=[];
-      s._tp.unshift({m:M.minute,p:pp,q:lots,d:(q>=0.5?1:-1),a:amt});
-      if(s._tp.length>60)s._tp.length=60;
-     }
-    }
-    s._fl.xl+=acc.xl;s._fl.l+=acc.l;s._fl.m+=acc.m;s._fl.s+=acc.s;
-   }
-   if(hot&&!sealed){
-    var amt2=hq*100*s.price;
-    s._fl.xl+=amt2*(bh.hotDir>0?0.92:-0.92);
-    if(s===TSEL){
-     var pp2=s.price;
-     if(bh.hotDir>0)pp2=Math.min(s.up,s.price+0.01);else pp2=Math.max(s.dn,s.price-0.01);
-     if(!s._tp)s._tp=[];
-     s._tp.unshift({m:M.minute,p:pp2,q:hq,d:bh.hotDir,a:amt2});
-     if(s._tp.length>60)s._tp.length=60;
-    }
-    s.lfair+=bh.hotDir*0.0015;
-   }
-   s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
-   if(s._fl.hist.length>240)s._fl.hist.shift();
-  }
- };
  function drawFlow(s){
   var c=document.getElementById('fcv');if(!c||!s||!s._fl)return;
   var a=s._fl.hist;if(!a.length)return;
