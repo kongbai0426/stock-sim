@@ -1,4 +1,5 @@
-/* pos.js —— 持仓页改版（同花顺风格：资产三格 + 每股卡片 + 迷你分时） */
+/* pos.js —— 持仓页改版（同花顺风格：资产三格 + 每股卡片 + 迷你线）
+   迷你线：盘中有分时点就画当天走势；收盘后 hist 被清空，退回画最近 40 根日K收盘价 */
 (function(){
   var pg=document.getElementById('p3');if(!pg)return;
   var css=document.createElement('style');
@@ -20,13 +21,19 @@
   function sg2(v){return (v>=0?'+':'')+fy(v)}
   function pct(v){return (v>=0?'+':'')+v.toFixed(2)+'%'}
   function spark(s){
-    var ls=s.hist;if(!ls||ls.length<3)return '';
-    var n=ls.length,mx=-1e9,mn=1e9,i,v;
-    for(i=0;i<n;i++){v=ls[i].p;if(v>mx)mx=v;if(v<mn)mn=v}
-    var rng=(mx-mn)||1,pts=[],K=44;
+    var arr=[],i,mx=-1e9,mn=1e9;
+    if(s.hist&&s.hist.length>=3){
+      for(i=0;i<s.hist.length;i++)arr.push(s.hist[i].p);
+    }else{
+      var kl=s.kline||[];
+      for(i=Math.max(0,kl.length-40);i<kl.length;i++)arr.push(kl[i].c);
+    }
+    if(arr.length<2)return '';
+    for(i=0;i<arr.length;i++){if(arr[i]>mx)mx=arr[i];if(arr[i]<mn)mn=arr[i]}
+    var rng=(mx-mn)||1,K=44,pts=[];
     for(i=0;i<K;i++){
-      var idx=Math.min(n-1,Math.round(i*(n-1)/(K-1)));
-      pts.push((i*100/(K-1)).toFixed(1)+','+(40-(ls[idx].p-mn)/rng*40).toFixed(1));
+      var idx=Math.min(arr.length-1,Math.round(i*(arr.length-1)/(K-1)));
+      pts.push((i*100/(K-1)).toFixed(1)+','+(40-(arr[idx]-mn)/rng*40).toFixed(1));
     }
     var col=(s.prev? s.price>=s.prev : true)?'#ff5252':'#00d09c';
     return '<svg class="sp" viewBox="0 0 100 40" preserveAspectRatio="none"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+col+'" stroke-width="1" vector-effect="non-scaling-stroke"/></svg>';
