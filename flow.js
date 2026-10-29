@@ -1,6 +1,6 @@
-/* flow.js v6 —— 资金博弈拆单 + 逐笔记录
-   每分钟：按平均单笔金额估笔数 → 对数正态抽权重 → 归一到当分钟成交额 → 量化成整手 → 分档
-   选中的票额外记录最近60笔到 s._tp，供 tape.js 显示（两者是同一批成交） */
+/* flow.js v8 —— 资金驱动：游资/主力主动发起，成交量与价格跟着动
+   超大=主力 大=游资 中=中户 小=散户
+   游资发动：连续 2~6 分钟猛吃，单笔可达数万手，成交量真实叠加，价格被推上去（能打板） */
 (function(){
  var TICK=12000;
  var R=function(){return Math.random()};
@@ -20,26 +20,45 @@
    if(!h)continue;
    if(M.minute<=1||!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(M.minute<=1)s._tp=[];
-   var cash=(h.v||0)*100*s.price;
+   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.10+R()*0.15),hotT:0,hotDir:1,hotQ:0};
+   var bh=s._bh;
+   if(!bh.hotT&&R()<(M.minute>=210?0.15:0.02)){
+    bh.hotT=2+Math.floor(R()*5);
+    bh.hotDir=(bh.main>0?1:-1);
+    bh.hotQ=Math.round((s.volBase||200)*(6+R()*20));
+   }
+   var hot=false,hq=0,baseV=h.v||0;
+   if(bh.hotT>0){
+    bh.hotT--;hot=true;
+    hq=Math.round(bh.hotQ*(0.5+R()*0.9));
+    s.vol+=hq;h.v=baseV+hq;
+   }
+   var cash=baseV*100*s.price;
    if(cash>0){
     var oneLot=s.price*100;
     var ticket=TICK>oneLot*1.15?TICK:oneLot*1.15;
     var N=Math.round(cash/ticket);
-    if(N<3)N=3;if(N>400)N=400;
+    if(N<3)N=3;if(N>300)N=300;
     var w=[],wsum=0,n,wt;
     for(n=0;n<N;n++){wt=Math.exp(gauss()*1.15);w.push(wt);wsum+=wt}
     var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
     var ret=prev?((s.price-prev)/prev):0;
-    var bias=Math.max(-0.15,Math.min(0.15,ret*100));
+    var ds=Math.max(-1,Math.min(1,ret*150));
+    var tail=(M.minute>=210)?1.5:1;
+    var seal=(s._seal===1)?0.30:0;
     var acc={xl:0,l:0,m:0,s:0};
     for(n=0;n<N;n++){
      var amt=cash*w[n]/wsum;
      var lots=Math.round(amt/s.price/100);
      if(lots<1)lots=1;
      amt=lots*100*s.price;
-     var q=0.5+bias+(R()-0.5)*0.35;
-     if(q<0.05)q=0.05;if(q>0.95)q=0.95;
      var b=amt>=1e6?'xl':amt>=2e5?'l':amt>=4e4?'m':'s';
+     var q;
+     if(b==='xl')q=0.5+bh.main*1.6*tail+ds*0.05+(R()-0.5)*0.10+seal;
+     else if(b==='l')q=0.5+bh.main*0.9*tail+ds*0.15+(R()-0.5)*0.40+seal;
+     else if(b==='m')q=0.5+ds*0.40+(R()-0.5)*0.25;
+     else q=0.5+ds*0.55+(R()-0.5)*0.30;
+     if(q<0.03)q=0.03;if(q>0.97)q=0.97;
      acc[b]+=amt*(2*q-1);
      if(s===TSEL){
       var pp=s.price;
@@ -51,6 +70,29 @@
      }
     }
     s._fl.xl+=acc.xl;s._fl.l+=acc.l;s._fl.m+=acc.m;s._fl.s+=acc.s;
+   }
+   if(hot){
+    var amt2=hq*100*s.price;
+    s._fl.xl+=amt2*(bh.hotDir>0?0.92:-0.92);
+    if(s===TSEL){
+     var pp2=s.price;
+     if(bh.hotDir>0){pp2=Math.min(s.up,s.price+0.01)}else{pp2=Math.max(s.dn,s.price-0.01)}
+     if(!s._tp)s._tp=[];
+     s._tp.unshift({m:M.minute,p:pp2,q:hq,d:bh.hotDir,a:amt2});
+     if(s._tp.length>60)s._tp.length=60;
+    }
+    if(s.price<s.up){
+     var push=bh.hotDir*Math.min(0.02,(0.003+R()*0.005)*Math.min(2.5,hq/((s.volBase||200)*10)));
+     s.lf+=push;
+     var p2=Math.exp(s.lf);
+     if(p2>s.up)p2=s.up;if(p2<s.dn)p2=s.dn;
+     s.price=Math.round(p2*100)/100;s.lf=Math.log(s.price);
+     if(s.price>s.high)s.high=s.price;
+     if(s.price<s.low)s.low=s.price;
+     h.p=s.price;
+     if(s.price>=s.up)s._seal=1;
+     if(window.buildBook)window.buildBook(s);
+    }
    }
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
