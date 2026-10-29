@@ -22,7 +22,7 @@ function initMarket(){
    shares:sh,floatShares:sh*0.72,pe:pe,eps:r2(price/pe),
    up:r2(price*1.1),dn:r2(price*0.9),baseCap:price*sh,tempMove:0,
    hist:[],kline:[],book:{bids:[],asks:[]},
-   volBase:Math.max(60,Math.round(sh*4.5))};
+   volBase:Math.max(220,Math.round(sh*4.5))};
   genHistory(st,price);
   st.lf=Math.log(st.price);
   st.lfair=st.lf;
