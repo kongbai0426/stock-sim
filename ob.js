@@ -1,6 +1,5 @@
-/* ob.js v2 —— 订单驱动撮合 + 资金流数据源
-   价格由主动买卖吃盘口产生；每分钟各角色净额写进 s._fl（资金博弈直接用它）、
-   逐笔写进 s._tp，用户委托由本文件的 matchAll 撮合（可穿多档、可挂回盘口）。 */
+/* ob.js v3 —— 订单驱动撮合 + 资金流数据源
+   同时包住 stepMinute 和 __stepReal，保证「收盘结算快进」时撮合与资金流照样走。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -80,16 +79,15 @@
    }
   }
  };
- var old=window.stepMinute;
- window.stepMinute=function(){
-  old();
+ function run(){
   if(M._obMin===M.minute)return;
   M._obMin=M.minute;
   if(M._obDay!==M.day){M._obDay=M.day;M._obN=0}
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h)continue;
-   if(M.minute<=1){s._seal=0;s._sealQty=0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
+   if(M.minute<=1||!s._fl){s._seal=s._seal||0;s._sealQty=s._sealQty||0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
+   if(M.minute<=1){s._seal=0;s._sealQty=0}
    if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1};
    var bh=s._bh;
    var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
@@ -98,7 +96,7 @@
    var rB=base*(0.30+R()*0.80)*(ds>0?1+ds*1.5:1-ds*0.5);
    var rS=base*(0.30+R()*0.80)*(ds<0?1-ds*1.5:1+ds*0.5);
    var mQ=base*bh.main*0.9;
-   var hot=0,canHot=(s._seal!==1&&s._seal===-1?!1:(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4));
+   var hot=0,canHot=(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4);
    if(bh.t>0){bh.t--;hot=base*bh.dir*(3+R()*6)}
    else if(canHot&&R()<(M.minute>=205?0.06:0.008)){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);M._obN=(M._obN||0)+1;
@@ -128,5 +126,8 @@
    if(s._fl.hist.length>240)s._fl.hist.shift();
    window.buildBook(s);
   }
- };
+ }
+ var old=window.stepMinute,real=window.__stepReal;
+ window.stepMinute=function(){old();run()};
+ if(real)window.__stepReal=function(){real();run()};
 })();
