@@ -9,8 +9,6 @@
    var s=M.stocks[i];
    s.kline.push({d:d,o:s.open,h:s.high,l:s.low,c:s.price,v:s.vol});
    if(s.kline.length>120)s.kline.shift();
-   s.prev=s.price;s.vol=0;s.amount=0;
-   s.up=r2(s.price*1.1);s.dn=r2(s.price*0.9);
   }
   M.phase='closed';M.minute=240;
  }
@@ -19,6 +17,7 @@
   M.day++;M.minute=0;M.phase='open';
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i];
+   s.prev=s.price;
    s.hist=[{p:s.price,v:0,m:0}];
    s.open=s.price;s.high=s.price;s.low=s.price;
    s.vol=0;s.amount=0;s.tempMove=0;
@@ -80,5 +79,5 @@
   ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   var last=ls[ls.length-1];
   x.fillStyle='#e6edf3';x.beginPath();x.arc(X(ls.length-1),Y(last.p),2.5,0,6.283);x.fill();
- }
+ };
 })();
