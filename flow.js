@@ -1,6 +1,6 @@
-/* flow.js v5 —— 资金博弈：逐笔金额重尾分布拆单，再按单笔金额分档
-   分档：小<4万 中4~20万 大20~100万 超大≥100万
-   每分钟：按平均单笔金额估笔数 → 对数正态抽权重 → 归一到当分钟成交额 → 量化成整手 → 分档 */
+/* flow.js v6 —— 资金博弈拆单 + 逐笔记录
+   每分钟：按平均单笔金额估笔数 → 对数正态抽权重 → 归一到当分钟成交额 → 量化成整手 → 分档
+   选中的票额外记录最近60笔到 s._tp，供 tape.js 显示（两者是同一批成交） */
 (function(){
  var TICK=12000;
  var R=function(){return Math.random()};
@@ -14,10 +14,12 @@
  var oldStep=window.stepMinute;
  window.stepMinute=function(){
   oldStep();
+  var TSEL=sel?getStock(sel):null;
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h)continue;
    if(M.minute<=1||!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
+   if(M.minute<=1)s._tp=[];
    var cash=(h.v||0)*100*s.price;
    if(cash>0){
     var oneLot=s.price*100;
@@ -39,6 +41,14 @@
      if(q<0.05)q=0.05;if(q>0.95)q=0.95;
      var b=amt>=1e6?'xl':amt>=2e5?'l':amt>=4e4?'m':'s';
      acc[b]+=amt*(2*q-1);
+     if(s===TSEL){
+      var pp=s.price;
+      if(q>=0.5){pp=Math.round((s.price+0.01)*100)/100;if(pp>s.up)pp=s.up}
+      else{pp=Math.round((s.price-0.01)*100)/100;if(pp<s.dn)pp=s.dn}
+      if(!s._tp)s._tp=[];
+      s._tp.unshift({m:M.minute,p:pp,q:lots,d:(q>=0.5?1:-1),a:amt});
+      if(s._tp.length>60)s._tp.length=60;
+     }
     }
     s._fl.xl+=acc.xl;s._fl.l+=acc.l;s._fl.m+=acc.m;s._fl.s+=acc.s;
    }
