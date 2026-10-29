@@ -7,16 +7,28 @@
  function base(si){var s=0;for(var i=0;i<M.stocks.length;i++){var st=M.stocks[i];if(si>=0&&st.si!==si)continue;s+=st.baseCap*(fw(st)/st.shares)}return s||1}
  function val(si,prev){var s=0;for(var i=0;i<M.stocks.length;i++){var st=M.stocks[i];if(si>=0&&st.si!==si)continue;s+=(prev?st.prev:st.price)*fw(st)}return 1000*s/base(si)}
  function trend(si){
-  var out=[];
-  for(var m=0;m<=M.minute;m++){
-   var s=0,v=0;
-   for(var i=0;i<M.stocks.length;i++){
-    var st=M.stocks[i];if(si>=0&&st.si!==si)continue;
-    var h=st.hist[m],p=(h&&h.m===m)?h.p:st.price;
-    s+=p*fw(st);
-    if(h&&h.m===m)v+=(h.v||0);
+  var i,m,list=[],w=[];
+  for(i=0;i<M.stocks.length;i++){var st=M.stocks[i];if(si>=0&&st.si!==si)continue;list.push(st);w.push(fw(st))}
+  if(!list.length)return [];
+  var B=base(si),P=[],V=[];
+  for(i=0;i<list.length;i++){
+   var a=[],b=[],hs=list[i].hist||[];
+   for(m=0;m<=240;m++){a.push(null);b.push(0)}
+   for(var k=0;k<hs.length;k++){
+    var h=hs[k],mm=(h.m==null?k:h.m);
+    if(mm!==Math.floor(mm)||mm<0||mm>240)continue;
+    a[mm]=h.p;b[mm]=h.v||0;
    }
-   out.push({p:1000*s/base(si),v:v,m:m});
+   P.push(a);V.push(b);
+  }
+  var out=[];
+  for(m=0;m<=M.minute&&m<=240;m++){
+   var s=0,v=0;
+   for(i=0;i<list.length;i++){
+    var p=P[i][m];if(p==null)p=list[i].price;
+    s+=p*w[i];v+=V[i][m];
+   }
+   out.push({p:1000*s/B,v:v,m:m});
   }
   return out;
  }
