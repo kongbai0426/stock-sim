@@ -1,5 +1,7 @@
-/* ob.js v4 —— 订单驱动撮合 + 资金流数据源
-   主力有日内节奏(强度游走/偶尔反向洗盘)；散户与中户用同一“意愿值”决定买卖比例。 */
+/* ob.js v6 —— 订单驱动撮合 + 资金流
+   资金口径：每笔成交的买卖两方按各自单笔金额分档，四档净额之和≈0；
+             每分钟台阶 = 当分钟成交额 × 该档占比（与量柱同步）；
+             超大单要求单笔≥100万，所以大多数分钟为0，只在关键时刻跳。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -88,48 +90,38 @@
    if(!h)continue;
    if(M.minute<=1||!s._fl){s._seal=s._seal||0;s._sealQty=s._sealQty||0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
    if(M.minute<=1){s._seal=0;s._sealQty=0}
-   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1,pw:0.6+R()*0.9};
+   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1,pw:0.6+R()*0.9,mt:0};
    var bh=s._bh;
-   var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
-   var ds=prev?Math.max(-1,Math.min(1,(s.price-prev)/prev*150)):0;
-   var base=(s.volBase||200)*100;
-   var will=ds*0.55+(R()-0.5)*0.55;
-   if(will>1)will=1;if(will<-1)will=-1;
-   bh.pw+= (R()-0.5)*0.30;
+   var vol=(h.v||0)*100,amt=vol*s.price;
+   bh.pw+=(R()-0.5)*0.30;
    if(bh.pw<0.25)bh.pw=0.25;if(bh.pw>1.8)bh.pw=1.8;
    if(R()<0.008)bh.main=-bh.main;
-   var rTot=base*0.55*(0.6+R()*0.8);
-   var mTot=base*0.25*(0.6+R()*0.8);
-   var rB=rTot*Math.max(0,0.5+will*0.55),rS=rTot*Math.max(0,0.5-will*0.55);
-   var mB2=mTot*Math.max(0,0.5+will*0.40),mS2=mTot*Math.max(0,0.5-will*0.40);
-   var kQ=base*0.15*bh.main*bh.pw;
-   var kB=kQ>0?kQ:0,kS=kQ<0?-kQ:0;
-   var hot=0,canHot=(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4);
-   if(bh.t>0){bh.t--;hot=base*bh.dir*(3+R()*6)}
+   if(bh.mt>0)bh.mt--;else if(R()<0.12)bh.mt=1+Math.floor(R()*3);
+   var mAmt=(bh.mt>0)?amt*(0.04+R()*0.12)*bh.main*bh.pw:0;
+   var hAmt=0,canHot=(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4);
+   if(bh.t>0){bh.t--;hAmt=amt*(0.10+R()*0.20)*bh.dir}
    else if(canHot&&R()<(M.minute>=205?0.06:0.008)){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);M._obN=(M._obN||0)+1;
-    hot=base*bh.dir*(4+R()*8);
+    hAmt=amt*(0.15+R()*0.25)*bh.dir;
    }
-   var hB=hot>0?hot:0,hS=hot<0?-hot:0;
-   var buy=kB+hB+rB+mB2,sell=kS+hS+rS+mS2,traded=0,p0=s.price;
-   if(buy>sell)traded=sweep(s,1,Math.round((buy-sell)/100)*100);
-   else if(sell>buy)traded=sweep(s,-1,Math.round((sell-buy)/100)*100);
+   var midAmt=amt*(0.06+R()*0.09)*(R()<0.5?1:-1);
+   var aggr=mAmt+hAmt+midAmt*0.5;
+   var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
+   var traded=0,p0=s.price;
+   var q=Math.round(aggr/s.price/100)*100;
+   if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    if(s._seal===1){
-    var hit=Math.round(base*(0.15+R()*0.7));s._sealQty-=hit;
+    var hit=Math.round((s.volBase||200)*(0.15+R()*0.7));s._sealQty-=hit;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.up)-1);traded+=hit}
    }else if(s._seal===-1){
-    var hit2=Math.round(base*(0.15+R()*0.7));s._sealQty-=hit2;
+    var hit2=Math.round((s.volBase||200)*(0.15+R()*0.7));s._sealQty-=hit2;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.dn)+1);traded+=hit2}
    }
    if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);h.p=s.price;
-   var px=(s.price+p0)/2||s.price;
-   s._fl.xl+=(kB-kS)*px;
-   s._fl.l+=(hB-hS)*px;
-   s._fl.m+=(mB2-mS2)*px;
-   s._fl.s+=(rB-rS)*px;
+   s._fl.xl+=mAmt;s._fl.l+=hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
    window.buildBook(s);
