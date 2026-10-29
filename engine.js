@@ -66,7 +66,7 @@ function stepMinute(){
   var st=M.stocks[k];
   st.lfair+=-0.002*(st.lfair-st.anchor)+M.mood*0.0002+M.secMood[st.si]*0.0004+0.0012*gauss();
   var dev=st.lf-st.lfair;
-  var ret=-0.02*dev+0.0015*gauss();
+  var ret=-0.004*dev+0.0022*gauss();
   if(rnd()<0.001)ret+=(rnd()<0.5?-1:1)*0.012;
   st.lf+=ret;
   var np=Math.exp(st.lf);
