@@ -205,13 +205,14 @@
  }
  function show(kind,s){
   var a;
-  if(kind==='m5')a=sub(live60(s),12);
-  else if(kind==='m15')a=sub(live60(s),4);
-  else if(kind==='m30')a=sub(live60(s),2);
-  else if(kind==='m60')a=live60(s);
+  if(kind==='m5')a=window.mk?window.mk(s,5):null;
+  else if(kind==='m15')a=window.mk?window.mk(s,15):null;
+  else if(kind==='m30')a=window.mk?window.mk(s,30):null;
+  else if(kind==='m60')a=window.mk?window.mk(s,60):null;
   else if(kind==='w')a=agg(daily(s),5);
   else if(kind==='m')a=agg(daily(s),20);
   else a=daily(s);
+  if(!a||!a.length)a=live60(s);
   prepare(a);
  }
  window.drawTrend=drawTrend;
