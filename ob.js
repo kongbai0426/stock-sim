@@ -1,5 +1,5 @@
-/* ob.js v3 —— 订单驱动撮合 + 资金流数据源
-   同时包住 stepMinute 和 __stepReal，保证「收盘结算快进」时撮合与资金流照样走。 */
+/* ob.js v4 —— 订单驱动撮合 + 资金流数据源
+   主力有日内节奏(强度游走/偶尔反向洗盘)；散户与中户用同一“意愿值”决定买卖比例。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -88,22 +88,30 @@
    if(!h)continue;
    if(M.minute<=1||!s._fl){s._seal=s._seal||0;s._sealQty=s._sealQty||0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
    if(M.minute<=1){s._seal=0;s._sealQty=0}
-   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1};
+   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1,pw:0.6+R()*0.9};
    var bh=s._bh;
    var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
    var ds=prev?Math.max(-1,Math.min(1,(s.price-prev)/prev*150)):0;
    var base=(s.volBase||200)*100;
-   var rB=base*(0.30+R()*0.80)*(ds>0?1+ds*1.5:1-ds*0.5);
-   var rS=base*(0.30+R()*0.80)*(ds<0?1-ds*1.5:1+ds*0.5);
-   var mQ=base*bh.main*0.9;
+   var will=ds*0.55+(R()-0.5)*0.55;
+   if(will>1)will=1;if(will<-1)will=-1;
+   bh.pw+= (R()-0.5)*0.30;
+   if(bh.pw<0.25)bh.pw=0.25;if(bh.pw>1.8)bh.pw=1.8;
+   if(R()<0.008)bh.main=-bh.main;
+   var rTot=base*0.55*(0.6+R()*0.8);
+   var mTot=base*0.25*(0.6+R()*0.8);
+   var rB=rTot*Math.max(0,0.5+will*0.55),rS=rTot*Math.max(0,0.5-will*0.55);
+   var mB2=mTot*Math.max(0,0.5+will*0.40),mS2=mTot*Math.max(0,0.5-will*0.40);
+   var kQ=base*0.15*bh.main*bh.pw;
+   var kB=kQ>0?kQ:0,kS=kQ<0?-kQ:0;
    var hot=0,canHot=(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4);
    if(bh.t>0){bh.t--;hot=base*bh.dir*(3+R()*6)}
    else if(canHot&&R()<(M.minute>=205?0.06:0.008)){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);M._obN=(M._obN||0)+1;
     hot=base*bh.dir*(4+R()*8);
    }
-   var mB=mQ>0?mQ:0,mS=mQ<0?-mQ:0,hB=hot>0?hot:0,hS=hot<0?-hot:0;
-   var buy=mB+hB+rB,sell=mS+hS+rS,traded=0,p0=s.price;
+   var hB=hot>0?hot:0,hS=hot<0?-hot:0;
+   var buy=kB+hB+rB+mB2,sell=kS+hS+rS+mS2,traded=0,p0=s.price;
    if(buy>sell)traded=sweep(s,1,Math.round((buy-sell)/100)*100);
    else if(sell>buy)traded=sweep(s,-1,Math.round((sell-buy)/100)*100);
    if(s._seal===1){
@@ -118,10 +126,10 @@
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);h.p=s.price;
    var px=(s.price+p0)/2||s.price;
-   s._fl.xl+=(mB-mS)*px;
+   s._fl.xl+=(kB-kS)*px;
    s._fl.l+=(hB-hS)*px;
-   s._fl.m+=(rB*0.35-rS*0.35)*px;
-   s._fl.s+=(rB*0.65-rS*0.65)*px;
+   s._fl.m+=(mB2-mS2)*px;
+   s._fl.s+=(rB-rS)*px;
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
    window.buildBook(s);
