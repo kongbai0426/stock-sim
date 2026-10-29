@@ -138,6 +138,7 @@
   cv.style.touchAction='none';
   var g=null;
   cv.addEventListener('touchstart',function(e){
+   if(mode==='t')return;
    if(e.touches.length===1){
     var t=e.touches[0];g={mode:'pan',x:t.clientX,end:V.end,w:V.w};
     V.cur=hitIndex(t.clientX);render();
@@ -147,7 +148,7 @@
    e.preventDefault();
   },{passive:false});
   cv.addEventListener('touchmove',function(e){
-   if(!g)return;
+   if(mode==='t'||!g)return;
    if(g.mode==='pan'&&e.touches.length===1){
     var t=e.touches[0],dx=t.clientX-g.x;
     V.end=Math.max(1,Math.min(V.data.length,g.end-Math.round(dx/V.w)));
@@ -160,11 +161,11 @@
    }
    e.preventDefault();
   },{passive:false});
-  cv.addEventListener('touchend',function(e){g=null;e.preventDefault()},{passive:false});
-  cv.addEventListener('mousedown',function(e){g={mode:'pan',x:e.clientX,end:V.end};V.cur=hitIndex(e.clientX);render()});
-  cv.addEventListener('mousemove',function(e){if(!g)return;var dx=e.clientX-g.x;V.end=Math.max(1,Math.min(V.data.length,g.end-Math.round(dx/V.w)));V.cur=-1;render()});
+  cv.addEventListener('touchend',function(e){if(mode==='t')return;g=null;e.preventDefault()},{passive:false});
+  cv.addEventListener('mousedown',function(e){if(mode==='t')return;g={mode:'pan',x:e.clientX,end:V.end};V.cur=hitIndex(e.clientX);render()});
+  cv.addEventListener('mousemove',function(e){if(mode==='t'||!g)return;var dx=e.clientX-g.x;V.end=Math.max(1,Math.min(V.data.length,g.end-Math.round(dx/V.w)));V.cur=-1;render()});
   cv.addEventListener('mouseup',function(){g=null});
-  cv.addEventListener('wheel',function(e){e.preventDefault();V.w=Math.max(2,Math.min(22,V.w+(e.deltaY>0?-0.8:0.8)));render()},{passive:false});
+  cv.addEventListener('wheel',function(e){if(mode==='t')return;e.preventDefault();V.w=Math.max(2,Math.min(22,V.w+(e.deltaY>0?-0.8:0.8)));render()},{passive:false});
  }
  function drawTrend(s){
   var cv=cvEl(),r=cv.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width,h=250;
