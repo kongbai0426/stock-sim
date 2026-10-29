@@ -86,16 +86,7 @@
      s._tp.unshift({m:M.minute,p:pp2,q:hq,d:bh.hotDir,a:amt2});
      if(s._tp.length>60)s._tp.length=60;
     }
-    var push=bh.hotDir*Math.min(0.006,(0.0015+R()*0.003)*Math.min(2,hq/Math.max(1,(s.volBase||200)*6)));
-    s.lf+=push;s.lfair+=push;
-    var p2=Math.exp(s.lf);
-    if(p2>s.up)p2=s.up;if(p2<s.dn)p2=s.dn;
-    s.price=Math.round(p2*100)/100;s.lf=Math.log(s.price);
-    if(s.price>s.high)s.high=s.price;
-    if(s.price<s.low)s.low=s.price;
-    h.p=s.price;
-    if(s.price>=s.up)s._seal=1;
-    if(window.buildBook)window.buildBook(s);
+    s.lfair+=bh.hotDir*0.0015;
    }
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
