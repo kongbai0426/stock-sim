@@ -1,12 +1,9 @@
-/* flow.js v4 —— 资金博弈：按“金额”分档（小60%/中25%/大12%/超大3%），按时间轴画
-   阈值：小<4万 中4~20万 大20~100万 超大≥100万；一手金额超过某档上限则这档不可达 */
+/* flow.js v5 —— 资金博弈：逐笔金额重尾分布拆单，再按单笔金额分档
+   分档：小<4万 中4~20万 大20~100万 超大≥100万
+   每分钟：按平均单笔金额估笔数 → 对数正态抽权重 → 归一到当分钟成交额 → 量化成整手 → 分档 */
 (function(){
- var RATIO=[0.60,0.25,0.12,0.03];
- var MAXA=[39999,199999,999999,1e15];
- var MINA=[0,40000,200000,1000000];
- var NOI=[0.05,0.10,0.18,0.28];
- var KEY=['s','m','l','xl'];
- function R(){return Math.random()}
+ var TICK=12000;
+ var R=function(){return Math.random()};
  var cv=document.getElementById('cv');
  if(cv&&!document.getElementById('fcv')){
   var f=document.createElement('canvas');
@@ -23,25 +20,27 @@
    if(M.minute<=1||!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    var cash=(h.v||0)*100*s.price;
    if(cash>0){
-    var oneLot=s.price*100,b,j,ok=[],sum=0;
-    for(b=0;b<4;b++){ok.push(oneLot<=MAXA[b]);if(ok[b])sum+=RATIO[b]}
-    var amt=[0,0,0,0];
-    for(b=0;b<4;b++)if(ok[b])amt[b]=cash*RATIO[b]/sum;
-    for(b=3;b>=1;b--){
-     if(amt[b]>=MINA[b])continue;
-     var tgt=-1;
-     for(j=b-1;j>=0;j--){if(ok[j]&&amt[j]>0){tgt=j;break}}
-     if(tgt>=0){amt[tgt]+=amt[b];amt[b]=0}
-    }
+    var oneLot=s.price*100;
+    var ticket=TICK>oneLot*1.15?TICK:oneLot*1.15;
+    var N=Math.round(cash/ticket);
+    if(N<3)N=3;if(N>400)N=400;
+    var w=[],wsum=0,n,wt;
+    for(n=0;n<N;n++){wt=Math.exp(gauss()*1.15);w.push(wt);wsum+=wt}
     var prev=s.hist.length>1?s.hist[s.hist.length-2].p:s.prev;
     var ret=prev?((s.price-prev)/prev):0;
-    var bias=Math.max(-0.18,Math.min(0.18,ret*120));
-    for(b=0;b<4;b++){
-     if(amt[b]<=0)continue;
-     var q=0.5+bias+(R()-0.5)*NOI[b];
-     q=Math.max(0.03,Math.min(0.97,q));
-     s._fl[KEY[b]]+=amt[b]*(2*q-1);
+    var bias=Math.max(-0.15,Math.min(0.15,ret*100));
+    var acc={xl:0,l:0,m:0,s:0};
+    for(n=0;n<N;n++){
+     var amt=cash*w[n]/wsum;
+     var lots=Math.round(amt/s.price/100);
+     if(lots<1)lots=1;
+     amt=lots*100*s.price;
+     var q=0.5+bias+(R()-0.5)*0.35;
+     if(q<0.05)q=0.05;if(q>0.95)q=0.95;
+     var b=amt>=1e6?'xl':amt>=2e5?'l':amt>=4e4?'m':'s';
+     acc[b]+=amt*(2*q-1);
     }
+    s._fl.xl+=acc.xl;s._fl.l+=acc.l;s._fl.m+=acc.m;s._fl.s+=acc.s;
    }
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
