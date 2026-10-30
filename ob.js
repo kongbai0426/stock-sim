@@ -1,5 +1,4 @@
-/* ob.js v10 —— 每 tick 撮合（6 模拟秒一次），但 hist 每分钟只记一个点
-   分钟内可以冲高回落，分时线上看不到 → 会出现“买在空中”。 */
+/* ob.js v12 —— 每 tick 撮合；深度封顶、涨跌停单档封单、资金线按天重置、lfair 跟随 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -9,16 +8,22 @@
   var b=(s.volBase||200)*100,span=Math.max(1,c2(s.up)-c2(s.dn));
   var up=(c2(s.up)-c2(s.price))/span,dn=(c2(s.price)-c2(s.dn))/span;
   var thin=1-Math.max(up,dn)*0.75;if(thin<0.15)thin=0.15;
-  return Math.max(100,Math.round(b*(0.5+R()*0.9)*thin));
+  var q=Math.round(b*(0.5+R()*0.9)*thin);
+  if(q<100)q=100;
+  if(q>b*3)q=b*3;
+  return q;
  }
  window.buildBook=function(s){
+  if(c2(s.price)>=c2(s.up)){s._seal=1;if(!s._sealQty)s._sealQty=Math.round((s.volBase||200)*100*(4+R()*10));s.price=s.up}
+  if(c2(s.price)<=c2(s.dn)){s._seal=-1;if(!s._sealQty)s._sealQty=Math.round((s.volBase||200)*100*(4+R()*10));s.price=s.dn}
   var b=c2(s.price),bids=[],asks=[],i;
   for(i=1;i<=5;i++){
-   bids.push({p:f2(Math.max(c2(s.dn),b-i)),q:dep(s)});
-   asks.push({p:f2(Math.min(c2(s.up),b+i)),q:dep(s)});
+   var bp=Math.max(c2(s.dn),b-i),ap=Math.min(c2(s.up),b+i);
+   bids.push({p:f2(bp),q:dep(s)});
+   asks.push({p:f2(ap),q:dep(s)});
   }
-  if(s._seal===1){asks=[];bids.unshift({p:s.up,q:s._sealQty||0})}
-  else if(s._seal===-1){bids=[];asks.unshift({p:s.dn,q:s._sealQty||0})}
+  if(s._seal===1){asks=[];bids=[{p:s.up,q:s._sealQty}]}
+  else if(s._seal===-1){bids=[];asks=[{p:s.dn,q:s._sealQty}]}
   s.book={bids:bids,asks:asks};s._ob=s.book;
  };
  function pr(s,px,sh,d){
@@ -83,8 +88,13 @@
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h||!s.book)continue;
-   if(!s._fl){s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];s._cm=0.22+R()*0.16;s._pb=[];s._ph=0}
+   if(s._flDay!==M.day){
+    s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
+    s._pb=[];s._ph=0;
+   }
    if(!s._bh){s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9}}
+   if(s._cm==null){s._cm=0.22+R()*0.16}
+   if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
    var bh=s._bh,base=(s.volBase||200)*100;
    var amt=base*s.price/TK;
    var damp=(s._ph===0)?0.55:1;
@@ -112,7 +122,9 @@
    if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
-   s.lf=Math.log(s.price);h.p=s.price;
+   s.lf=Math.log(s.price);
+   s.lfair+=(s.lf-s.lfair)*0.35;
+   h.p=s.price;
    s._cm+=(mAmt/s.price/base)*2.8e-5;
    if(s._cm<0.08)s._cm=0.08;if(s._cm>0.88)s._cm=0.88;
    s._fl.xl+=xlP;s._fl.l+=lP+hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
@@ -124,7 +136,6 @@
  function run(){
   if(M._obMin===M.minute)return;
   M._obMin=M.minute;
-  if(M._obDay!==M.day){M._obDay=M.day}
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i];
    if(M.minute<=1){s._seal=0;s._sealQty=0;s._pb=[]}
@@ -145,5 +156,5 @@
  }
  var old=window.stepMinute,real=window.__stepReal;
  window.stepMinute=function(){old();flowTick();run()};
- if(real)window.__stepReal=function(){real();flowTick();run()};
+ if(real)window.__stepReal=function(){real();run()};
 })();
