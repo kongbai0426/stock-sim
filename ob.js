@@ -1,6 +1,6 @@
 /* ob.js v17 —— 盘口厚、量柱只记真实成交、逐笔含用户成交 */
 (function(){
- var BS=4;
+ var BS=1;
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
  function f2(c){return c/100}
