@@ -1,4 +1,5 @@
-/* ob.js v13 —— 每 tick 撮合；逐笔按 tick 合并、深度封顶、涨跌停单档封单 */
+/* ob.js v14 —— 每 tick 撮合 + 题材周期
+   每 3~7 天选一个题材板块，该板块内的票被资金连续顶，能打出涨停和连板。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -83,8 +84,20 @@
   }
  };
  var TK=10;
+ var TV={day:-1,si:-1,t:0,pw:1};
+ function themeTick(){
+  if(TV.day===M.day)return;
+  TV.day=M.day;
+  TV.t--;
+  if(TV.t<=0){
+   TV.t=3+Math.floor(R()*5);
+   TV.si=Math.floor(R()*SECTORS.length);
+   TV.pw=1.2+R()*0.9;
+  }
+ }
  function flowTick(){
   if(M.phase!=='open')return;
+  themeTick();
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h||!s.book)continue;
@@ -95,13 +108,14 @@
    if(!s._bh){s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9}}
    if(s._cm==null){s._cm=0.22+R()*0.16}
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
+   var th=(TV.t>0&&s.si===TV.si);
    var bh=s._bh,base=(s.volBase||200)*100;
-   var amt=base*s.price/TK;
+   var amt=base*s.price/TK*(th?6:1);
    var damp=(s._ph===0)?0.55:1;
-   var mAmt=amt*(0.04+R()*0.12)*bh.main*bh.pw*damp;
+   var mAmt=amt*(0.04+R()*0.12)*bh.main*bh.pw*damp*(th?1.8:1);
    var hAmt=0,canHot=(s._seal!==1&&s._seal!==-1);
    if(bh.t>0){bh.t--;hAmt=amt*(0.10+R()*0.20)*bh.dir}
-   else if(canHot&&s._ph===1&&R()<(M.minute>=205?0.06:0.008)){
+   else if(canHot&&(th||s._ph===1)&&R()<(th?0.30:(M.minute>=205?0.06:0.008))){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);
     hAmt=amt*(0.15+R()*0.25)*bh.dir;
    }
@@ -145,10 +159,12 @@
    if(!s._pb)s._pb=[];
    s._pb.push(s.price);if(s._pb.length>31)s._pb.shift();
    var rise=s._pb.length>20?((s.price-s._pb[0])/s._pb[0]):0;
-   var ph=s._cm<0.30?0:(s._cm<0.62?1:2);
+   var th=(TV.t>0&&s.si===TV.si);
+   var ph=th?1:(s._cm<0.30?0:(s._cm<0.62?1:2));
    var baseMain=ph===0?(0.30+R()*0.35):ph===1?(0.75+R()*0.45):-(0.55+R()*0.35);
-   if(rise>0.025)baseMain=-(0.30+R()*0.30);
-   if(rise<-0.03)baseMain=0.45+R()*0.35;
+   if(th)baseMain=(0.90+R()*0.45)*TV.pw;
+   if(!th&&rise>0.025)baseMain=-(0.30+R()*0.30);
+   if(!th&&rise<-0.03)baseMain=0.45+R()*0.35;
    bh.main=baseMain;s._ph=ph;
    bh.pw+=(R()-0.5)*0.30;
    if(bh.pw<0.25)bh.pw=0.25;if(bh.pw>1.8)bh.pw=1.8;
