@@ -1,5 +1,6 @@
-/* ob.js v14 —— 每 tick 撮合 + 题材周期
-   每 3~7 天选一个题材板块，该板块内的票被资金连续顶，能打出涨停和连板。 */
+/* ob.js v15 —— 价格只由吃单产生
+   每秒把 clock/引擎改过的价格撤回（_px），只保留撮合造成的变化；
+   成交流量放大到与 volBase 匹配，逐笔单笔约 10~30 手，能推动 1 档/分钟。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -99,18 +100,21 @@
   if(M.phase!=='open')return;
   themeTick();
   for(var i=0;i<M.stocks.length;i++){
-   var s=M.stocks[i],h=s.hist[s.hist.length-1];
-   if(!h||!s.book)continue;
+   var s=M.stocks[i];
+   if(!s.book)continue;
    if(s._flDay!==M.day){
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
-    s._pb=[];s._ph=0;s._sq=0;
+    s._pb=[];s._ph=0;s._sq=0;s._px=null;
    }
+   if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
+   var h=s.hist[s.hist.length-1];
+   if(!h)continue;
    if(!s._bh){s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9}}
    if(s._cm==null){s._cm=0.22+R()*0.16}
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
    var th=(TV.t>0&&s.si===TV.si);
    var bh=s._bh,base=(s.volBase||200)*100;
-   var amt=base*s.price/TK*(th?6:1);
+   var amt=base*s.price;
    var damp=(s._ph===0)?0.55:1;
    var mAmt=amt*(0.04+R()*0.12)*bh.main*bh.pw*damp*(th?1.8:1);
    var hAmt=0,canHot=(s._seal!==1&&s._seal!==-1);
@@ -122,8 +126,8 @@
    var midAmt=amt*(0.06+R()*0.09)*(R()<0.5?1:-1);
    var xlP=0,lP=mAmt;
    if(Math.abs(mAmt)>=1e5){xlP=mAmt*0.4;lP=mAmt*0.6}
-   var aggr=mAmt+hAmt+midAmt*0.5;
-   var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
+   var aggr=(mAmt+hAmt+midAmt*0.5)/TK;
+   var rAmt=-(aggr+midAmt/TK)*(0.85+R()*0.45);
    var q=Math.round(aggr/s.price/100)*100,traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    if(s._seal===1){
@@ -138,14 +142,14 @@
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);
-   s.lfair+=(s.lf-s.lfair)*0.35;
    h.p=s.price;
    s._cm+=(mAmt/s.price/base)*2.8e-5;
    if(s._cm<0.08)s._cm=0.08;if(s._cm>0.88)s._cm=0.88;
-   s._fl.xl+=xlP;s._fl.l+=lP+hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
+   s._fl.xl+=xlP/TK;s._fl.l+=(lP+hAmt)/TK;s._fl.m+=midAmt/TK;s._fl.s+=rAmt;
    var lh=s._fl.hist[s._fl.hist.length-1];
    if(lh&&lh.t===M.minute){lh.xl=s._fl.xl;lh.l=s._fl.l;lh.m=s._fl.m;lh.s=s._fl.s}
    else{s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
+   s._px=s.price;
   }
  }
  function run(){
