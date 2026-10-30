@@ -1,6 +1,5 @@
-/* ob.js v8 —— 订单驱动撮合 + 资金流 + 筹码交换
-   主力每笔金额≥100万才拆一部分进“超大”，其余进“大单”——所以红线稀疏、黄线连续。
-   筹码 _cm 决定 吸筹/拉升/派发；价格完全由资金吃盘产生。 */
+/* ob.js v9 —— 订单驱动撮合 + 资金流 + 筹码 + 每 tick 刷新盘口
+   盘口每秒微调一次挂单量（模拟 3 秒一档），早盘活跃度更高；价格仍按分钟撮合。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -63,23 +62,36 @@
    if(rem<=0)continue;
    if(o.side==='buy'){
     while(rem>0&&s.book.asks.length&&c2(s.book.asks[0].p)<=c2(o.price)){
-     var a=s.book.asks[0];take=Math.min(rem,a.q);
-     a.q-=take;rem-=take;fill(o,a.p,take);
-     s.vol+=take/100;s.price=cl(s,a.p);
+     var a=s.book.asks[0];take=Math.min(rem,a.q);a.q-=take;rem-=take;
+     fill(o,a.p,take);s.vol+=take/100;s.price=cl(s,a.p);
      if(a.q<=0)s.book.asks.shift();
     }
     if(rem>0){addBook(s,'buy',o.price,rem);o._restQ=rem}
    }else{
     while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
-     var b=s.book.bids[0];take=Math.min(rem,b.q);
-     b.q-=take;rem-=take;fill(o,b.p,take);
-     s.vol+=take/100;s.price=cl(s,b.p);
+     var b=s.book.bids[0];take=Math.min(rem,b.q);b.q-=take;rem-=take;
+     fill(o,b.p,take);s.vol+=take/100;s.price=cl(s,b.p);
      if(b.q<=0)s.book.bids.shift();
     }
     if(rem>0){addBook(s,'sell',o.price,rem);o._restQ=rem}
    }
   }
  };
+ function tickBook(){
+  var s=sel?getStock(sel):null;
+  if(!s||!s.book)return;
+  var boost=(M.minute<30)?2.2:(M.minute>200?1.6:1),ob=s.book,i,l;
+  for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.max(100,Math.round(l.q*(0.80+R()*0.40*boost)))}
+  for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.max(100,Math.round(l.q*(0.80+R()*0.40*boost)))}
+  if(R()<(M.minute<30?0.55:0.28)){
+   var up=R()<0.5,lv=up?ob.asks[0]:ob.bids[0];
+   if(lv){
+    var sh=Math.round(1+R()*12)*10000;
+    lv.q=Math.max(100,lv.q-sh*0.4);
+    pr(s,lv.p,sh,up?1:-1);
+   }
+  }
+ }
  function run(){
   if(M._obMin===M.minute)return;
   M._obMin=M.minute;
@@ -88,7 +100,7 @@
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h)continue;
    if(M.minute<=1||!s._fl){s._seal=s._seal||0;s._sealQty=s._sealQty||0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
-   if(M.minute<=1){s._seal=0;s._sealQty=0;s._pb=[]}
+   if(M.minute<=1){s._seal=0;s._sealQty=0;s._pb=[];s._mv=0}
    if(s._cm==null)s._cm=0.22+R()*0.16;
    if(!s._bh||M.minute<=1)s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9};
    var bh=s._bh;
@@ -132,17 +144,14 @@
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);h.p=s.price;
    s._cm+=(mAmt/s.price/base)*2.8e-4;
-   if(s._cm<0.08)s._cm=0.08;if(s._cm>0.88)s._cm=0.88;
-   s._fl.xl+=xlP;
-   s._fl.l+=lP+hAmt;
-   s._fl.m+=midAmt;
-   s._fl.s+=rAmt;
+   if(s._cm<0.08)s._cm=0.08;if(s._cm>0.88)s._cm=0.88;如果(s._cm<0.08)s._cm=0.08;如果(s._cm>0.88)s._cm=0.88;
+   s._fl.xl+=xlP;s._fl.l+=lP+hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
-   if(s._fl.hist.length>240)s._fl.hist.shift();
-   window.buildBook(s);
+   if(s._fl.hist.length>240)s._fl.hist.shift();如果(s._flhist长度>240)则移动；
+   window.buildBook(s);窗口.构建书籍(s);
   }
  }
  var old=window.stepMinute,real=window.__stepReal;
- window.stepMinute=function(){old();run()};
- if(real)window.__stepReal=function(){real();run()};
+ window.stepMinute=function(){old();run();tickBook()};窗口.stepMinute=函数(){旧();运行();tickBook()};
+ if(real)window.__stepReal=function(){real();run();tickBook()};如果(真实)窗口.__stepReal=函数(){真实();运行();tickBook()};
 })();
