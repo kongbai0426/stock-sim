@@ -1,4 +1,4 @@
-/* axis.js v3 —— 分时纵轴锁定 昨收±涨跌停价（0% 居中），不再按当日最大波动放大 */
+/* axis.js v4 —— 分时纵轴锁定 昨收±涨跌停；只标 最高/零轴/最低 三个数值 */
 (function(){
  function r2(x){return Math.round(x*100)/100}
  window.drawTrend=function(s){
@@ -14,19 +14,22 @@
   if(dn>=pre)dn=r2(pre*0.9);
   var mx=up,mn=dn;
   window._ax={pre:pre,up:up,dn:dn,mx:mx,mn:mn};
-  var L=6,R=w-92,T=8,PH=h*0.6,VY=T+PH+10,VH=h-VY-12;
+  var L=6,R=w-86,T=12,PH=h*0.6,VY=T+PH+10,VH=h-VY-12;
   function X(i){var mm=(ls[i]&&ls[i].m!=null)?ls[i].m:i;return L+(R-L)*mm/240}
   function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
   for(var i=0;i<=4;i++){
-   var y=T+PH*i/4,val=mx-(mx-mn)*i/4,pct=(val-pre)/pre*100;
-   x.strokeStyle=i===2?'#2b3a4c':(i===0?'#5a2b2b':(i===4?'#1e4a3f':'#1a2432'));
+   var y=T+PH*i/4;
+   x.strokeStyle=i===2?'#2b3a4c':(i===0?'#4a2323':(i===4?'#17392f':'#1a2432'));
    x.lineWidth=1;x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();
-   x.textAlign='right';
-   x.font='8px sans-serif';x.fillStyle='#5c6b7a';x.fillText(val.toFixed(2),w-50,y+3);
-   x.font='9px sans-serif';
-   x.fillStyle=pct>0.001?'#ff5252':(pct<-0.001?'#00d09c':'#7d8b9c');
-   x.fillText((pct>0?'+':'')+pct.toFixed(2)+'%',w-2,y+3);
   }
+  function tag(i){
+   var y=T+PH*i/4,val=mx-(mx-mn)*i/4,pct=(val-pre)/pre*100;
+   var txt=val.toFixed(2)+'  '+(pct>0?'+':'')+pct.toFixed(2)+'%';
+   x.font='9px sans-serif';x.textAlign='right';
+   x.fillStyle=pct>0.001?'#ff5252':(pct<-0.001?'#00d09c':'#8b98a8');
+   x.fillText(txt,w-2,y+3);
+  }
+  tag(0);tag(2);tag(4);
   var vmax=1;ls.forEach(function(v){if(v.v>vmax)vmax=v.v});
   var bw=Math.max(1,(R-L)/240*0.7);
   ls.forEach(function(v,i){
