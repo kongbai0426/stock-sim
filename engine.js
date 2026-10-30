@@ -22,7 +22,7 @@ function initMarket(){
    shares:sh,floatShares:sh*0.72,pe:pe,eps:r2(price/pe),
    up:r2(price*1.1),dn:r2(price*0.9),baseCap:price*sh,tempMove:0,
    hist:[],kline:[],book:{bids:[],asks:[]},
-   volBase:Math.max(220,Math.round(sh*4.5))};
+   volBase:Math.max(800,Math.round(sh*2500*TURNOVER[a[2]]))};
   genHistory(st,price);
   st.lf=Math.log(st.price);
   st.lfair=st.lf;
@@ -66,7 +66,7 @@ function stepMinute(){
   var st=M.stocks[k];
   st.lfair+=-0.002*(st.lfair-st.anchor)+M.mood*0.0002+M.secMood[st.si]*0.0004+0.0012*gauss();
   var dev=st.lf-st.lfair;
-  var ret=-0.004*dev+0.0022*gauss();
+  var ret=-0.004*dev+0.0022*(M.kvol||1)*gauss();
   if(rnd()<0.001)ret+=(rnd()<0.5?-1:1)*0.012;
   st.lf+=ret;
   var np=Math.exp(st.lf);
