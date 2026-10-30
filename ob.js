@@ -1,4 +1,4 @@
-/* ob.js v17 —— 盘口厚、量柱只记真实成交、逐笔含用户成交 */
+/* ob.js v20 —— 盘口对齐：买1=最新价，卖1=最新价+0.01，价差恒为1个价位 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -18,34 +18,43 @@
  window.buildBook=function(s){
   if(c2(s.price)>=c2(s.up)){s._seal=1;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10));s.price=s.up}
   if(c2(s.price)<=c2(s.dn)){s._seal=-1;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10));s.price=s.dn}
-  var b=c2(s.price),bids=[],asks=[],i;
-  for(i=1;i<=5;i++){
-   bids.push({p:f2(Math.max(c2(s.dn),b-i)),q:dep(s)});
-   asks.push({p:f2(Math.min(c2(s.up),b+i)),q:dep(s)});
+  var b=c2(s.price),bids=[],asks=[],i,p;
+  if(s._seal===1){
+   bids=[{p:s.up,q:s._sealQty}];
+   for(i=1;i<=4;i++){p=Math.max(c2(s.dn),c2(s.up)-i);bids.push({p:f2(p),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
+   s.book={bids:bids,asks:[]};s._ob=s.book;return;
   }
-  if(s._seal===1){asks=[];bids=[{p:s.up,q:s._sealQty}]}
-  else if(s._seal===-1){bids=[];asks=[{p:s.dn,q:s._sealQty}]}
+  if(s._seal===-1){
+   asks=[{p:s.dn,q:s._sealQty}];
+   for(i=1;i<=4;i++){p=Math.min(c2(s.up),c2(s.dn)+i);asks.push({p:f2(p),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
+   s.book={bids:[],asks:asks};s._ob=s.book;return;
+  }
+  for(i=0;i<5;i++){
+   bids.push({p:f2(Math.max(c2(s.dn),b-i)),q:dep(s)});
+   asks.push({p:f2(Math.min(c2(s.up),b+1+i)),q:dep(s)});
+  }
   s.book={bids:bids,asks:asks};s._ob=s.book;
  };
+ function align(s){
+  if(!s.book||s._seal)return;
+  var ob=s.book,b=c2(s.price),i;
+  ob.bids=ob.bids.filter(function(x){return c2(x.p)<=b});
+  ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
+  ob.bids.sort(function(x,y){return y.p-x.p});
+  ob.asks.sort(function(x,y){return x.p-y.p});
+  if(!ob.bids.length||c2(ob.bids[0].p)!==b)ob.bids.unshift({p:f2(b),q:dep(s)});
+  if(!ob.asks.length||c2(ob.asks[0].p)!==b+1)ob.asks.unshift({p:f2(Math.min(c2(s.up),b+1)),q:dep(s)});
+  while(ob.bids.length>5)ob.bids.pop();
+  while(ob.asks.length>5)ob.asks.pop();
+  ob.bids=ob.bids.filter(function(x){return c2(x.p)>=c2(s.dn)});
+  ob.asks=ob.asks.filter(function(x){return c2(x.p)<=c2(s.up)});
+  s._ob=ob;
+ }
  function replenish(s){
   if(!s.book)return;
   if(s._seal){window.buildBook(s);return}
   var ob=s.book,b=c2(s.price),i,l;
   var cap=Math.round(baseQ(s)*3);
-  ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
-  ob.bids=ob.bids.filter(function(x){return c2(x.p)<b});
-  ob.asks.sort(function(x,y){return x.p-y.p});
-  ob.bids.sort(function(x,y){return y.p-x.p});
-  while(ob.asks.length<5){
-   var la=ob.asks.length?c2(ob.asks[ob.asks.length-1].p):b;
-   var na=la+1;if(na>c2(s.up))break;
-   ob.asks.push({p:f2(na),q:Math.round(dep(s)*0.8)});
-  }
-  while(ob.bids.length<5){
-   var lb=ob.bids.length?c2(ob.bids[ob.bids.length-1].p):b;
-   var nb=lb-1;if(nb<c2(s.dn))break;
-   ob.bids.push({p:f2(nb),q:Math.round(dep(s)*0.8)});
-  }
   var add=baseQ(s)*0.03;
   for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
   for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
@@ -65,13 +74,13 @@
     if(!ob.asks.length){s.price=s.up;s._seal=1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.asks[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
-    if(a.q<=0){ob.asks.shift();if(!ob.asks.length&&c2(s.price)<c2(s.up))ob.asks.push({p:f2(c2(s.price)+1),q:dep(s)})}
+    if(a.q<=0)ob.asks.shift();
    }else{
     if(s._seal===-1){s._sealQty=(s._sealQty||0)+left;left=0;break}
     if(!ob.bids.length){s.price=s.dn;s._seal=-1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.bids[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
-    if(a.q<=0){ob.bids.shift();if(!ob.bids.length&&c2(s.price)>c2(s.dn))ob.bids.push({p:f2(c2(s.price)-1),q:dep(s)})}
+    if(a.q<=0)ob.bids.shift();
    }
   }
   if(traded>0){s._sd=dir;s._sq=(s._sq||0)+traded;s._sp=s.price}
@@ -136,6 +145,8 @@
     window.buildBook(s);
    }
    if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
+   if(s._seal===1&&c2(s.price)<c2(s.up)){s.price=s.up;s.lf=Math.log(s.price)}
+   if(s._seal===-1&&c2(s.price)>c2(s.dn)){s.price=s.dn;s.lf=Math.log(s.price)}
    var h=s.hist[s.hist.length-1];
    if(!h)continue;
    if(s._vm!==M.minute){s._vm=M.minute;h.v=0;}
@@ -158,7 +169,6 @@
    if(Math.abs(mAmt)>=1e5){xlP=mAmt*0.4;lP=mAmt*0.6}
    var aggr=mAmt+hAmt+midAmt*0.5;
    var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
-   if(Math.random()<0.5){}
    var q=Math.round(aggr/s.price/100)*100,traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    if(s._seal===1){
@@ -168,6 +178,7 @@
     var hit2=Math.round(baseQ(s)*(0.02+R()*0.06));s._sealQty-=hit2;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.dn)+1);traded+=hit2}
    }
+   align(s);
    replenish(s);
    if(s._sq>0){pr(s,s._sp,s._sq,s._sd);s._sq=0}
    if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
