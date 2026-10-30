@@ -1,19 +1,15 @@
-/* tape.js v3 —— 明细：时间 / 价格 / 金额，≥50万标大单 */
+/* tape.js v5 —— 明细：时间 / 价格 / 金额 */
 (function(){
   var lv=document.getElementById('lv');if(!lv)return;
   var css=document.createElement('style');
   css.textContent=
-   '.trh{display:flex;font-size:10px;color:#5c6b7a;padding:2px 12px 2px;border-bottom:1px solid #16202b}'
+   '.trh{display:flex;font-size:10px;color:#5c6b7a;padding:2px 12px;border-bottom:1px solid #16202b}'
    +'.trh span:first-child{width:42px}.trh span:nth-child(2){flex:1;text-align:right}'
    +'.trh span:nth-child(3){width:74px;text-align:right}'
    +'.tr{display:flex;font-size:11px;padding:2px 12px;line-height:18px;border-bottom:1px solid #101820}'
    +'.tr span:first-child{width:42px;color:#7d8b9c}'
    +'.tr span:nth-child(2){flex:1;text-align:right;font-variant-numeric:tabular-nums}'
-   +'.tr span:nth-child(3){width:74px;text-align:right;font-variant-numeric:tabular-nums}'
-   +'.tr.big{background:rgba(255,82,82,.07)}'
-   +'.tr.big span:nth-child(3){font-weight:700}'
-   +'.tr.gbig{background:rgba(0,208,156,.07)}'
-   +'.tr.gbig span:nth-child(3){font-weight:700}';
+   +'.tr span:nth-child(3){width:74px;text-align:right;font-variant-numeric:tabular-nums}';
   document.head.appendChild(css);
   var box=document.createElement('div');
   box.id='tpHolder';
@@ -31,10 +27,10 @@
   }
   function draw(){
     var s=getStock(sel);if(!s)return;
-    var a=s._tp||[],h='',i,o,cl,big;
-    for(i=0;i<a.length&&i<16;i++){
-      o=a[i];cl=o.d>0?'r':'g';big=o.a>=5e5;
-      h+='<div class="tr '+(big?(o.d>0?'big':'gbig'):'')+'"><span>'+fmtTime(o.m)+'</span>'
+    var a=s._tp||[],h='',i,o,cl;
+    for(i=0;i<a.length&&i<26;i++){
+      o=a[i];cl=o.d>0?'r':'g';
+      h+='<div class="tr"><span>'+fmtTime(o.m)+'</span>'
        +'<span class="'+cl+'">'+o.p.toFixed(2)+'</span>'
        +'<span class="'+cl+'">'+amt(o.a)+'</span></div>';
     }
