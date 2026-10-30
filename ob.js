@@ -1,4 +1,4 @@
-/* ob.js v20 —— 盘口对齐：买1=最新价，卖1=最新价+0.01，价差恒为1个价位 */
+/* ob.js v23 —— 每次都以「价格」判定封板；涨停价恒等于 昨收×1.1（跌停×0.9） */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -7,6 +7,22 @@
  function cl(s,p){return f2(Math.max(c2(s.dn),Math.min(c2(s.up),c2(p))))}
  function baseQ(s){return (s.volBase||200)*100}
  function flowQ(s){return (s.volBase||200)*100*BS}
+ function limit(s){
+  s.up=Math.round((s.prev||s.price)*110)/100;
+  s.dn=Math.round((s.prev||s.price)*90)/100;
+ }
+ function sealSync(s){
+  var b=c2(s.price),u=c2(s.up),d=c2(s.dn);
+  if(b>=u){
+   s._seal=1;s.price=f2(u);
+   if(!s._sealQty||s._sealQty<100)s._sealQty=Math.round(baseQ(s)*(4+R()*10));
+  }else if(b<=d){
+   s._seal=-1;s.price=f2(d);
+   if(!s._sealQty||s._sealQty<100)s._sealQty=Math.round(baseQ(s)*(4+R()*10));
+  }else{
+   if(s._seal){s._seal=0;s._sealQty=0}
+  }
+ }
  function dep(s){
   var b=baseQ(s),span=Math.max(1,c2(s.up)-c2(s.dn));
   var up=(c2(s.up)-c2(s.price))/span,dn=(c2(s.price)-c2(s.dn))/span;
@@ -16,8 +32,7 @@
   return q;
  }
  window.buildBook=function(s){
-  if(c2(s.price)>=c2(s.up)){s._seal=1;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10));s.price=s.up}
-  if(c2(s.price)<=c2(s.dn)){s._seal=-1;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10));s.price=s.dn}
+  sealSync(s);
   var b=c2(s.price),bids=[],asks=[],i,p;
   if(s._seal===1){
    bids=[{p:s.up,q:s._sealQty}];
@@ -37,7 +52,7 @@
  };
  function align(s){
   if(!s.book||s._seal)return;
-  var ob=s.book,b=c2(s.price),i;
+  var ob=s.book,b=c2(s.price);
   ob.bids=ob.bids.filter(function(x){return c2(x.p)<=b});
   ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
   ob.bids.sort(function(x,y){return y.p-x.p});
@@ -46,16 +61,13 @@
   if(!ob.asks.length||c2(ob.asks[0].p)!==b+1)ob.asks.unshift({p:f2(Math.min(c2(s.up),b+1)),q:dep(s)});
   while(ob.bids.length>5)ob.bids.pop();
   while(ob.asks.length>5)ob.asks.pop();
-  ob.bids=ob.bids.filter(function(x){return c2(x.p)>=c2(s.dn)});
-  ob.asks=ob.asks.filter(function(x){return c2(x.p)<=c2(s.up)});
   s._ob=ob;
  }
  function replenish(s){
   if(!s.book)return;
   if(s._seal){window.buildBook(s);return}
-  var ob=s.book,b=c2(s.price),i,l;
-  var cap=Math.round(baseQ(s)*3);
-  var add=baseQ(s)*0.03;
+  var ob=s.book,i,l;
+  var cap=Math.round(baseQ(s)*3),add=baseQ(s)*0.03;
   for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
   for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
   s._ob=ob;
@@ -138,15 +150,15 @@
   themeTick();
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i];
+   limit(s);
    if(!s.book){window.buildBook(s);}
    if(s._flDay!==M.day){
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
-    s._pb=[];s._ph=0;s._sq=0;s._px=null;s._vm=null;
+    s._pb=[];s._ph=0;s._sq=0;s._px=null;s._vm=null;s._vk=1;
     window.buildBook(s);
    }
    if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
-   if(s._seal===1&&c2(s.price)<c2(s.up)){s.price=s.up;s.lf=Math.log(s.price)}
-   if(s._seal===-1&&c2(s.price)>c2(s.dn)){s.price=s.dn;s.lf=Math.log(s.price)}
+   sealSync(s);
    var h=s.hist[s.hist.length-1];
    if(!h)continue;
    if(s._vm!==M.minute){s._vm=M.minute;h.v=0;}
@@ -154,15 +166,15 @@
    if(s._cm==null){s._cm=0.22+R()*0.16}
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
    var th=(TV.t>0&&s.si===TV.si);
-   var bh=s._bh,base=flowQ(s);
+   var bh=s._bh,base=flowQ(s)*(s._vk||1);
    var amt=base*s.price/TK;
    var damp=(s._ph===0)?0.55:1;
    var mAmt=amt*(0.04+R()*0.12)*bh.main*bh.pw*damp*(th?1.8:1);
-   var hAmt=0,canHot=(s._seal!==1&&s._seal!==-1);
-   if(bh.t>0){bh.t--;hAmt=amt*(0.10+R()*0.20)*bh.dir}
+   var hAmt=0,canHot=(s._seal===0||s._seal===undefined);
+   if(bh.t>0){bh.t--;hAmt=amt*(0.10+R()*0.30)*bh.dir}
    else if(canHot&&(th||s._ph===1)&&R()<(th?0.30:(M.minute>=205?0.06:0.008))){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);
-    hAmt=amt*(0.15+R()*0.25)*bh.dir;
+    hAmt=amt*(0.15+R()*0.35)*bh.dir;
    }
    var midAmt=amt*(0.06+R()*0.09)*(R()<0.5?1:-1);
    var xlP=0,lP=mAmt;
@@ -170,12 +182,15 @@
    var aggr=mAmt+hAmt+midAmt*0.5;
    var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
    var q=Math.round(aggr/s.price/100)*100,traded=0;
+   if(q>0&&R()<0.015)q=Math.round(q*(6+R()*10));
+   if(q<0&&R()<0.015)q=Math.round(q*(6+R()*10));
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
-   if(s._seal===1){
-    var hit=Math.round(baseQ(s)*(0.02+R()*0.06));s._sealQty-=hit;
+   sealSync(s);
+   if(s._seal===1&&R()<0.05){
+    var hit=Math.round(baseQ(s)*(0.03+R()*0.10));s._sealQty-=hit;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.up)-1);traded+=hit}
-   }else if(s._seal===-1){
-    var hit2=Math.round(baseQ(s)*(0.02+R()*0.06));s._sealQty-=hit2;
+   }else if(s._seal===-1&&R()<0.05){
+    var hit2=Math.round(baseQ(s)*(0.03+R()*0.10));s._sealQty-=hit2;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.dn)+1);traded+=hit2}
    }
    align(s);
@@ -204,7 +219,10 @@
    if(!s._bh){s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9}}
    var bh=s._bh;
    if(!s._pb)s._pb=[];
+   var prevP=s._pb.length?s._pb[s._pb.length-1]:s.price;
    s._pb.push(s.price);if(s._pb.length>31)s._pb.shift();
+   var mv=prevP?Math.abs(s.price-prevP)/prevP:0;
+   s._vk=Math.min(6,Math.max(0.25,0.25+mv*350));
    var rise=s._pb.length>20?((s.price-s._pb[0])/s._pb[0]):0;
    var th=(TV.t>0&&s.si===TV.si);
    var ph=th?1:(s._cm<0.30?0:(s._cm<0.62?1:2));
@@ -219,5 +237,5 @@
  }
  var old=window.stepMinute,real=window.__stepReal;
  window.stepMinute=function(){old();flowTick();run()};
- if(real)window.__stepReal=function(){real();run()};
+ if(real)window.__stepReal=function(){real();flowTick();run()};
 })();
