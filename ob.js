@@ -1,7 +1,6 @@
-/* ob.js v6 —— 订单驱动撮合 + 资金流
-   资金口径：每笔成交的买卖两方按各自单笔金额分档，四档净额之和≈0；
-             每分钟台阶 = 当分钟成交额 × 该档占比（与量柱同步）；
-             超大单要求单笔≥100万，所以大多数分钟为0，只在关键时刻跳。 */
+/* ob.js v7 —— 订单驱动撮合 + 资金流 + 筹码交换
+   主力持筹 s._cm 决定阶段：吸筹(<30% 横盘) → 拉升(30~62% 上涨) → 派发(>62% 出货)
+   近30分钟涨超2.5%触发获利回吐，跌超3%主力护盘。 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -89,18 +88,29 @@
    var s=M.stocks[i],h=s.hist[s.hist.length-1];
    if(!h)continue;
    if(M.minute<=1||!s._fl){s._seal=s._seal||0;s._sealQty=s._sealQty||0;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[]}
-   if(M.minute<=1){s._seal=0;s._sealQty=0}
-   if(!s._bh||M.minute<=1)s._bh={main:(R()<0.55?1:-1)*(0.25+R()*0.55),t:0,dir:1,pw:0.6+R()*0.9,mt:0};
+   if(M.minute<=1){s._seal=0;s._sealQty=0;s._pb=[]}
+   if(s._cm==null)s._cm=0.22+R()*0.16;
+   if(!s._bh||M.minute<=1)s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9,mt:0};
    var bh=s._bh;
-   var vol=(h.v||0)*100,amt=vol*s.price;
+   if(!s._pb)s._pb=[];
+   s._pb.push(s.price);if(s._pb.length>31)s._pb.shift();
+   var rise=s._pb.length>20?((s.price-s._pb[0])/s._pb[0]):0;
+   var cm=s._cm;
+   var ph=cm<0.30?0:(cm<0.62?1:2);
+   var baseMain=ph===0?(0.30+R()*0.35):ph===1?(0.75+R()*0.45):-(0.55+R()*0.35);
+   if(rise>0.025)baseMain=-(0.30+R()*0.30);
+   if(rise<-0.03)baseMain=0.45+R()*0.35;
+   bh.main=baseMain;
    bh.pw+=(R()-0.5)*0.30;
    if(bh.pw<0.25)bh.pw=0.25;if(bh.pw>1.8)bh.pw=1.8;
-   if(R()<0.008)bh.main=-bh.main;
+   var base=(s.volBase||200)*100;
+   var damp=(ph===0)?0.55:1;
+   var vol=(h.v||0)*100,amt=vol*s.price;
    if(bh.mt>0)bh.mt--;else if(R()<0.12)bh.mt=1+Math.floor(R()*3);
-   var mAmt=(bh.mt>0)?amt*(0.04+R()*0.12)*bh.main*bh.pw:0;
+   var mAmt=(bh.mt>0)?amt*(0.04+R()*0.12)*bh.main*bh.pw*damp:0;
    var hAmt=0,canHot=(s._seal!==1&&s._seal!==-1&&(M._obN||0)<4);
    if(bh.t>0){bh.t--;hAmt=amt*(0.10+R()*0.20)*bh.dir}
-   else if(canHot&&R()<(M.minute>=205?0.06:0.008)){
+   else if(canHot&&ph===1&&R()<(M.minute>=205?0.06:0.008)){
     bh.t=2+Math.floor(R()*3);bh.dir=(bh.main>0?1:-1);M._obN=(M._obN||0)+1;
     hAmt=amt*(0.15+R()*0.25)*bh.dir;
    }
@@ -121,6 +131,8 @@
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);h.p=s.price;
+   s._cm+=(mAmt/s.price/base)*2.8e-4;
+   if(s._cm<0.08)s._cm=0.08;if(s._cm>0.88)s._cm=0.88;
    s._fl.xl+=mAmt;s._fl.l+=hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
    s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});
    if(s._fl.hist.length>240)s._fl.hist.shift();
