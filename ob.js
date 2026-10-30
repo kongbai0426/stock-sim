@@ -1,7 +1,4 @@
-/* ob.js v24
-   主力剧本：吸筹 → 试盘 → 洗盘 → 主升 → 派发（循环）
-   游资剧本：选票 → 点火3~8分钟 → 打板 → 次日高开出货
-   价格/成交量/资金流全部由这两个剧本驱动的主动单产生 */
+/* ob.js v25 —— 封板粘住（只有封单被吃光才开板）；盘口恒补满五档 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -15,10 +12,10 @@
   s.dn=Math.round((s.prev||s.price)*90)/100;
  }
  function sealSync(s){
-  var b=c2(s.price),u=c2(s.up),d=c2(s.dn);
-  if(b>=u){s._seal=1;s.price=f2(u);if(!s._sealQty||s._sealQty<100)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
-  else if(b<=d){s._seal=-1;s.price=f2(d);if(!s._sealQty||s._sealQty<100)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
-  else if(s._seal){s._seal=0;s._sealQty=0}
+  if(s._seal===1){s.price=s.up;return}
+  if(s._seal===-1){s.price=s.dn;return}
+  if(c2(s.price)>=c2(s.up)){s._seal=1;s.price=s.up;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
+  else if(c2(s.price)<=c2(s.dn)){s._seal=-1;s.price=s.dn;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
  }
  function dep(s){
   var b=baseQ(s),span=Math.max(1,c2(s.up)-c2(s.dn));
@@ -49,25 +46,41 @@
  };
  function align(s){
   if(!s.book||s._seal)return;
-  var ob=s.book,b=c2(s.price);
+  var ob=s.book,b=c2(s.price),p;
   ob.bids=ob.bids.filter(function(x){return c2(x.p)<=b});
   ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
   ob.bids.sort(function(x,y){return y.p-x.p});
   ob.asks.sort(function(x,y){return x.p-y.p});
   if(!ob.bids.length||c2(ob.bids[0].p)!==b)ob.bids.unshift({p:f2(b),q:dep(s)});
   if(!ob.asks.length||c2(ob.asks[0].p)!==b+1)ob.asks.unshift({p:f2(Math.min(c2(s.up),b+1)),q:dep(s)});
+  while(ob.bids.length<5){
+   p=c2(ob.bids[ob.bids.length-1].p)-1;
+   if(p<c2(s.dn)||p>=c2(ob.bids[ob.bids.length-1].p))break;
+   ob.bids.push({p:f2(p),q:dep(s)});
+  }
+  while(ob.asks.length<5){
+   p=c2(ob.asks[ob.asks.length-1].p)+1;
+   if(p>c2(s.up)||p<=c2(ob.asks[ob.asks.length-1].p))break;
+   ob.asks.push({p:f2(p),q:dep(s)});
+  }
   while(ob.bids.length>5)ob.bids.pop();
   while(ob.asks.length>5)ob.asks.pop();
   s._ob=ob;
  }
- function replenish(s){
+ function keepSeal(s){
   if(!s.book)return;
-  if(s._seal){window.buildBook(s);return}
-  var ob=s.book,i,l;
-  var cap=Math.round(baseQ(s)*3),add=baseQ(s)*0.03;
-  for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
-  for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
-  s._ob=ob;
+  if(s._seal===1){
+   if(!s.book.bids.length||c2(s.book.bids[0].p)!==c2(s.up)){window.buildBook(s);return}
+   s.book.asks=[];s.book.bids[0].q=s._sealQty;
+  }else if(s._seal===-1){
+   if(!s.book.asks.length||c2(s.book.asks[0].p)!==c2(s.dn)){window.buildBook(s);return}
+   s.book.bids=[];s.book.asks[0].q=s._sealQty;
+  }else{
+   var ob=s.book,i,l,cap=Math.round(baseQ(s)*3),add=baseQ(s)*0.03;
+   for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
+   for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
+  }
+  s._ob=s.book;
  }
  function pr(s,px,sh,d){
   if(sel!==s.code)return;
@@ -202,7 +215,7 @@
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.dn)+1);traded+=hit2}
    }
    align(s);
-   replenish(s);
+   keepSeal(s);
    if(s._sq>0){pr(s,s._sp,s._sq,s._sd);s._sq=0}
    if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
    if(s.price>s.high)s.high=s.price;
