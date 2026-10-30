@@ -1,4 +1,4 @@
-/* ob.js v12 —— 每 tick 撮合；深度封顶、涨跌停单档封单、资金线按天重置、lfair 跟随 */
+/* ob.js v13 —— 每 tick 撮合；逐笔按 tick 合并、深度封顶、涨跌停单档封单 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -18,9 +18,8 @@
   if(c2(s.price)<=c2(s.dn)){s._seal=-1;if(!s._sealQty)s._sealQty=Math.round((s.volBase||200)*100*(4+R()*10));s.price=s.dn}
   var b=c2(s.price),bids=[],asks=[],i;
   for(i=1;i<=5;i++){
-   var bp=Math.max(c2(s.dn),b-i),ap=Math.min(c2(s.up),b+i);
-   bids.push({p:f2(bp),q:dep(s)});
-   asks.push({p:f2(ap),q:dep(s)});
+   bids.push({p:f2(Math.max(c2(s.dn),b-i)),q:dep(s)});
+   asks.push({p:f2(Math.min(c2(s.up),b+i)),q:dep(s)});
   }
   if(s._seal===1){asks=[];bids=[{p:s.up,q:s._sealQty}]}
   else if(s._seal===-1){bids=[];asks=[{p:s.dn,q:s._sealQty}]}
@@ -39,16 +38,17 @@
     if(s._seal===1){s._sealQty=(s._sealQty||0)+left;left=0;break}
     if(!ob.asks.length){s.price=s.up;s._seal=1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.asks[0];take=Math.min(left,a.q);
-    a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);pr(s,a.p,take,1);
+    a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
     if(a.q<=0){ob.asks.shift();if(!ob.asks.length&&c2(s.price)<c2(s.up))ob.asks.push({p:f2(c2(s.price)+1),q:dep(s)})}
    }else{
     if(s._seal===-1){s._sealQty=(s._sealQty||0)+left;left=0;break}
     if(!ob.bids.length){s.price=s.dn;s._seal=-1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.bids[0];take=Math.min(left,a.q);
-    a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);pr(s,a.p,take,-1);
+    a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
     if(a.q<=0){ob.bids.shift();if(!ob.bids.length&&c2(s.price)>c2(s.dn))ob.bids.push({p:f2(c2(s.price)-1),q:dep(s)})}
    }
   }
+  if(traded>0){s._sd=dir;s._sq=(s._sq||0)+traded;s._sp=s.price}
   return traded;
  }
  function addBook(s,side,p,q){
@@ -90,7 +90,7 @@
    if(!h||!s.book)continue;
    if(s._flDay!==M.day){
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
-    s._pb=[];s._ph=0;
+    s._pb=[];s._ph=0;s._sq=0;
    }
    if(!s._bh){s._bh={main:0,t:0,dir:1,pw:0.6+R()*0.9}}
    if(s._cm==null){s._cm=0.22+R()*0.16}
@@ -119,6 +119,7 @@
     var hit2=Math.round(base*(0.02+R()*0.07));s._sealQty-=hit2;
     if(s._sealQty<=0){s._seal=0;s._sealQty=0;s.price=f2(c2(s.dn)+1);traded+=hit2}
    }
+   if(s._sq>0){pr(s,s._sp,s._sq,s._sd);s._sq=0}
    if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
