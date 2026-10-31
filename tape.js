@@ -1,4 +1,4 @@
-/* tape.js v5 —— 明细：时间 / 价格 / 金额 */
+/* tape.js v6 —— 明细：时间 / 价格 / 金额（重绘交给 rd，不再自带定时器） */
 (function(){
   var lv=document.getElementById('lv');if(!lv)return;
   var css=document.createElement('style');
@@ -37,5 +37,4 @@
     E('tpList').innerHTML=h||'<div class="emp">等待成交</div>';
   }
   var o=window.rd;window.rd=function(){if(o)o();draw()};
-  setInterval(function(){var d=E('dt');if(d&&d.classList.contains('on'))draw()},1000);
 })();
