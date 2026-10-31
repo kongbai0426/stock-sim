@@ -1,4 +1,4 @@
-/* ob.js v28 —— 涨跌幅按板块 + 获利盘/套牢盘：连板后自动转派发，避免无限涨停 */
+/* ob.js v29 —— 目标涨幅跟踪：主力四阶段给目标、价格自己收敛，杜绝无限涨停 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -189,30 +189,22 @@
    if(!s._yz)s._yz={on:0,t:0,dump:0};
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
    var P=s._mb.ph,yz=s._yz;
-   var dirK=[0.25,0.50,-0.25,0.85,-0.55][P];
    var vkP=[0.70,1.30,0.50,2.00,1.20][P];
-   if(P===3&&M.minute>=215)dirK=0.95;
-   if(P===4&&M.minute>=215)dirK=0.70;
-   if(P===0&&s._dmp>0){dirK=-1.2;s._dmp-=1/TK;}
-   var kl=s.kline||[];
-   if(kl.length>3){
-    var ref=kl[kl.length-4].c;
-    if(ref>0){
-     var gain=s.price/ref-1;
-     if(gain>0.22)dirK-=1.3;
-     else if(gain<-0.22)dirK+=1.0;
-    }
-   }
+   var tgt=[0.004,0.012,-0.008,0.028,-0.022][P];
+   if(P===3&&M.minute>=215)tgt=0.034;
+   if(P===4&&M.minute>=215)tgt=-0.026;
+   if(yz.on)tgt=tgt*1.6;
+   var dr=s.open?(s.price/s.open-1):0;
+   var dirK=(tgt-dr)*15;
+   if(yz.dump>0&&M.minute<=8)dirK-=0.6;
+   if(P===0&&s._dmp>0){dirK=-0.8;s._dmp-=1/TK;}
    if(dirK>2)dirK=2;
    if(dirK<-2)dirK=-2;
    var yzB=yz.on?1:0;
-   var yzD=(yz.dump>0&&M.minute<=8)?1:0;
    var base=flowQ(s)*vkP*(0.75+0.25*(s._vk||1));
    var amt=base*s.price/TK;
-   var mAmt=amt*(0.05+R()*0.10)*(dirK+yzB*1.2-yzD*1.4);
+   var mAmt=amt*(0.05+R()*0.10)*dirK;
    var hAmt=0;
-   if(yzB)hAmt=amt*(0.8+R()*0.8);
-   if(yzD)hAmt=-amt*(0.6+R()*0.6);
    var midAmt=amt*(0.10+R()*0.15)*(R()<0.5?1:-1);
    var xlP=0;
    if(P===3||yzB){xlP=mAmt*0.4;mAmt=mAmt*0.6;}
