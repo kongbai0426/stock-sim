@@ -1,5 +1,10 @@
-/* layout.js v5 —— 双栏 + 封单可被真实砸开（替换 matchAll） */
+/* layout.js v6 —— 版本号 AX9 · 双栏 · 封单可被真实砸开 */
 (function(){
+  var VER='AX9';
+  function setTitle(){try{document.title='模拟股市 v8 M6 '+VER}catch(e){}}
+  setTitle();setTimeout(setTitle,0);setTimeout(setTitle,600);
+  setInterval(function(){if(document.title!=='模拟股市 v8 M6 '+VER)document.title='模拟股市 v8 M6 '+VER},1500);
+
   var dt=document.getElementById('dt');if(!dt)return;
   var cv=document.getElementById('cv'),tabs=dt.querySelector('.tabs2');
   if(!cv||!tabs)return;
