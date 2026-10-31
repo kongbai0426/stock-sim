@@ -1,4 +1,4 @@
-// 收盘结算 + 分时纵轴（固定 昨收±涨跌停，只标 顶/零/底）
+// 收盘结算 + 分时轴（按当日最高/最低对称；价格左、百分比右；画到最右）
 (function(){
  function r2(x){return Math.round(x*100)/100}
  function settleStay(){
@@ -55,12 +55,14 @@
   var ls=s.hist;
   if(!ls||ls.length<2){x.fillStyle='#7d8b9c';x.font='12px sans-serif';x.fillText('等待行情…',12,30);return}
   var pre=s.prev||ls[0].p||1;
-  var up=s.up||r2(pre*1.1),dn=s.dn||r2(pre*0.9);
-  if(up<=pre)up=r2(pre*1.1);
-  if(dn>=pre)dn=r2(pre*0.9);
-  var mx=up,mn=dn;
-  window._ax={pre:pre,up:up,dn:dn,mx:mx,mn:mn};
-  var L=6,R=w-86,T=8,PH=h*0.6,VY=T+PH+10,VH=h-VY-12;
+  var hi=s.high||pre,lo=s.low||pre;
+  if(hi<pre)hi=pre;
+  if(lo>pre)lo=pre;
+  var dev=Math.max(hi-pre,pre-lo);
+  if(dev<pre*0.005)dev=pre*0.005;
+  var mx=pre+dev,mn=pre-dev;
+  window._ax={pre:pre,up:mx,dn:mn,mx:mx,mn:mn};
+  var L=4,R=w-2,T=12,PH=h*0.6,VY=T+PH+10,VH=h-VY-12;
   function X(i){var mm=ls[i].m!=null?ls[i].m:i;return L+(R-L)*mm/240}
   function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
   for(var i=0;i<=4;i++){
@@ -70,9 +72,15 @@
    x.lineWidth=1;x.beginPath();x.moveTo(L,y);x.lineTo(R,y);x.stroke();
    if(i===2)x.setLineDash([]);
    if(i===0||i===2||i===4){
-    x.textAlign='right';x.font='9px sans-serif';
-    x.fillStyle=pct>0.001?'#ff5252':(pct<-0.001?'#00d09c':'#8b98a8');
-    x.fillText(val.toFixed(2)+'  '+(pct>0?'+':'')+pct.toFixed(2)+'%',w-2,y+3);
+    var col=pct>0.001?'#ff5252':(pct<-0.001?'#00d09c':'#8b98a8');
+    var t1=val.toFixed(2),t2=(pct>0?'+':'')+pct.toFixed(2)+'%';
+    x.font='10px sans-serif';
+    x.textAlign='left';var w1=x.measureText(t1).width;
+    x.fillStyle='rgba(11,15,20,.82)';x.fillRect(L,y-10,w1+4,12);
+    x.fillStyle=col;x.fillText(t1,L+1,y+2);
+    x.textAlign='right';var w2=x.measureText(t2).width;
+    x.fillStyle='rgba(11,15,20,.82)';x.fillRect(w-3-w2,y-10,w2+4,12);
+    x.fillStyle=col;x.fillText(t2,w-1,y+2);
    }
   }
   var vmax=1;ls.forEach(function(v){if(v.v>vmax)vmax=v.v});
@@ -86,12 +94,11 @@
   ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   var last=ls[ls.length-1];
   x.fillStyle='#e6edf3';x.beginPath();x.arc(X(ls.length-1),Y(last.p),2.5,0,6.283);x.fill();
-  x.font='9px sans-serif';x.textAlign='left';x.fillStyle='#e8b339';x.fillText('AX5',L+1,h-3);
  };
  window.drawTrend=window.__trend;
  setTimeout(function(){window.drawTrend=window.__trend},0);
- if(document.readyState==='complete')setTimeout(function(){window.drawTrend=window.__trend},0);
- else window.addEventListener('load',function(){window.drawTrend=window.__trend});
+ window.addEventListener('load',function(){window.drawTrend=window.__trend});
  setTimeout(function(){window.drawTrend=window.__trend},600);
  setInterval(function(){if(window.drawTrend!==window.__trend)window.drawTrend=window.__trend},1000);
+ try{document.title=(document.title||'').replace(/ AX\d+/g,'')+' AX7'}catch(e){}
 })();
