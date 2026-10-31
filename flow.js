@@ -1,4 +1,4 @@
-/* flow.js v19 —— 单一数据源 + 唯一分时画手 + 长按十字线 */
+/* flow.js v20 —— 单一数据源 + 唯一分时画手 + 十字线 + 横轴时间 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -76,7 +76,9 @@
  function myTrend(s){
   var c=document.getElementById('cv');if(!c||!s)return;
   var r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width||320,h=230;
-  c.width=w*d;c.height=h*d;c.style.height=h+'px';
+  var W=Math.round(w*d),H2=Math.round(h*d);
+  if(c.width!==W||c.height!==H2){c.width=W;c.height=H2;}
+  c.style.height=h+'px';
   var x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,h);
   var ls=s.hist||[];
   if(ls.length<2){x.fillStyle='#7d8b9c';x.font='12px sans-serif';x.fillText('等待行情…',12,30);return}
@@ -86,7 +88,7 @@
   var dev=Math.max(hi-pre,pre-lo);
   if(dev<pre*0.005)dev=pre*0.005;
   var mx=pre+dev,mn=pre-dev;
-  var L=4,Rr=w-2,T=12,PH=h*0.6,VY=T+PH+10,VH=h-VY-12;
+  var L=4,Rr=w-2,T=12,PH=h*0.6,VY=T+PH+10,VH=h-VY-14;
   function X(i){var mm=ls[i].m!=null?ls[i].m:i;return L+(Rr-L)*mm/240}
   function Y(p){return T+PH-(p-mn)/(mx-mn)*PH}
   for(var i=0;i<=4;i++){
@@ -119,6 +121,15 @@
   ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   var last=ls[ls.length-1];
   x.fillStyle='#e6edf3';x.beginPath();x.arc(X(ls.length-1),Y(last.p),2.5,0,6.283);x.fill();
+  x.font='9px sans-serif';x.fillStyle='#5c6b7a';
+  var tl=[0,120,240];
+  for(var g2=0;g2<3;g2++){
+   var mm3=tl[g2],xx=L+(Rr-L)*mm3/240;
+   var ss=(typeof fmtTime==='function'?fmtTime(mm3):'');
+   if(g2===0){x.textAlign='left';x.fillText(ss,L,h-3);}
+   else if(g2===2){x.textAlign='right';x.fillText(ss,Rr,h-3);}
+   else{x.textAlign='center';x.fillText(ss,xx,h-3);}
+  }
   if(cx>=0){
    var cxx=Math.max(L,Math.min(Rr,cx));
    var cm=Math.max(0,Math.min(240,Math.round((cxx-L)/(Rr-L)*240)));
@@ -142,7 +153,9 @@
   var c=document.getElementById('fcv');if(!c||!s||!s._fl)return;
   var a=s._fl.hist;if(!a||!a.length)return;
   var r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width||300,hh=104;
-  c.width=w*d;c.height=hh*d;c.style.height=hh+'px';
+  var W=Math.round(w*d),H2=Math.round(hh*d);
+  if(c.width!==W||c.height!==H2){c.width=W;c.height=H2;}
+  c.style.height=hh+'px';
   var x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,hh);
   var L=4,Rr=w-2,T=14,B=hh-10,mx=1;
   for(var i=0;i<a.length;i++){var p=a[i];
