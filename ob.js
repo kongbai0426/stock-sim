@@ -1,4 +1,4 @@
-/* ob.js v30 —— 修复：换日清封板 / 卖单能真正吃掉封单 */
+/* ob.js v31 —— 真实化：小目标涨幅 + 硬边带 + 3% 强势日 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -187,6 +187,7 @@
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
     s._pb=[];s._ph=0;s._sq=0;s._px=null;s._vm=null;s._vk=1;s._dmp=0;
     s._seal=0;s._sealQty=0;
+    s._hot=(R()<0.03)?1:0;
     window.buildBook(s);
    }
    if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
@@ -199,22 +200,26 @@
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
    var P=s._mb.ph,yz=s._yz;
    var vkP=[0.70,1.30,0.50,2.00,1.20][P];
-   var tgt=[0.004,0.012,-0.008,0.028,-0.022][P];
-   if(P===3&&M.minute>=215)tgt=0.034;
-   if(P===4&&M.minute>=215)tgt=-0.026;
-   if(yz.on)tgt=tgt*1.6;
+   var tgt=[0.002,0.006,-0.004,0.015,-0.012][P];
+   if(P===3&&M.minute>=215)tgt=0.020;
+   if(P===4&&M.minute>=215)tgt=-0.016;
+   if(yz.on)tgt=tgt*1.5;
    var dr=s.open?(s.price/s.open-1):0;
-   var dirK=(tgt-dr)*15;
-   if(yz.dump>0&&M.minute<=8)dirK-=0.6;
-   if(P===0&&s._dmp>0){dirK=-0.8;s._dmp-=1/TK;}
-   if(dirK>2)dirK=2;
-   if(dirK<-2)dirK=-2;
+   var limPct=s.prev?(s.up/s.prev-1):0.10;
+   var band=s._hot?(limPct+0.005):(Math.abs(tgt)+0.025);
+   var dirK=(tgt-dr)*20;
+   if(dr>band)dirK=-1.2;
+   else if(dr<-band)dirK=1.2;
+   if(yz.dump>0&&M.minute<=8)dirK-=0.5;
+   if(P===0&&s._dmp>0){dirK=-0.7;s._dmp-=1/TK;}
+   if(dirK>1.5)dirK=1.5;
+   if(dirK<-1.5)dirK=-1.5;
    var yzB=yz.on?1:0;
    var base=flowQ(s)*vkP*(0.75+0.25*(s._vk||1));
    var amt=base*s.price/TK;
    var mAmt=amt*(0.05+R()*0.10)*dirK;
    var hAmt=0;
-   var midAmt=amt*(0.10+R()*0.15)*(R()<0.5?1:-1);
+   var midAmt=amt*(0.04+R()*0.08)*(R()<0.5?1:-1);
    var xlP=0;
    if(P===3||yzB){xlP=mAmt*0.4;mAmt=mAmt*0.6;}
    else{midAmt+=mAmt;mAmt=0;}
