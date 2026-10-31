@@ -1,5 +1,4 @@
-/* ob.js v26 —— 封板粘住（只有封单被吃光才开板）；盘口恒补满五档
-   本版仅新增 window.__ob（供 loop.js 显式调度），行为不变 */
+/* ob.js v27 —— 涨停幅度按板块：主板/中小板 ±10%，创业板300/301、科创板688/689 ±20%，ST ±5% */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -9,8 +8,12 @@
  function baseQ(s){return (s.volBase||200)*100}
  function flowQ(s){return (s.volBase||200)*100*BS}
  function limit(s){
-  s.up=Math.round((s.prev||s.price)*110)/100;
-  s.dn=Math.round((s.prev||s.price)*90)/100;
+  var c=s.code||'',r=0.10;
+  if(c.indexOf('300')===0||c.indexOf('301')===0||c.indexOf('688')===0||c.indexOf('689')===0)r=0.20;
+  if(s.name&&s.name.indexOf('ST')>=0)r=0.05;
+  var b=s.prev||s.price;
+  s.up=Math.round(b*(100+r*100))/100;
+  s.dn=Math.round(b*(100-r*100))/100;
  }
  function sealSync(s){
   if(s._seal===1){s.price=s.up;return}
