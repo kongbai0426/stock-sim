@@ -1,9 +1,23 @@
-/* layout.js v10 —— 版本号 AX13 · 双栏 · 封单可被真实砸开 */
+/* layout.js v13 —— 版本号 AX20 · 双栏 · 封单可砸开 · 市场数据对账 */
 (function(){
-  var VER='AX16';
+  var VER='AX20';
   function setTitle(){try{document.title='模拟股市 v8 M6 '+VER}catch(e){}}
   setTitle();setTimeout(setTitle,0);setTimeout(setTitle,600);
   setInterval(function(){if(document.title!=='模拟股市 v8 M6 '+VER)document.title='模拟股市 v8 M6 '+VER},1500);
+
+  function fmtW(v){v=+v||0;var a=Math.abs(v);if(a>=1e8)return (v/1e8).toFixed(2)+'亿';if(a>=1e4)return (v/1e4).toFixed(1)+'万';return v.toFixed(0)}
+  window.__audit=function(){
+    var s=getStock(sel);if(!s)return;
+    var f=s._fl||{xl:0,l:0,m:0,s:0};
+    var sum=(+f.xl||0)+(+f.l||0)+(+f.m||0)+(+f.s||0);
+    var amt=+s._va||0;
+    var hv=0,i;
+    for(i=0;i<s.hist.length;i++)hv+=s.hist[i].v||0;
+    var d=amt?Math.abs(amt-sum)/amt*100:0;
+    ts('成交额 '+fmtW(amt)+' / 资金合计 '+fmtW(sum)+'（差 '+d.toFixed(2)+'%）；量 '+Math.round(s.vol||0)+'手 / 量柱 '+Math.round(hv)+'手');
+  };
+  var ck=document.getElementById('ck');
+  if(ck){var oldck=ck.onclick;ck.onclick=function(){if(oldck)oldck();try{window.__audit()}catch(e){}}}
 
   var dt=document.getElementById('dt');if(!dt)return;
   var cv=document.getElementById('cv'),tabs=dt.querySelector('.tabs2');
