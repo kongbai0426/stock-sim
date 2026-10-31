@@ -1,6 +1,7 @@
-/* flow.js v18 —— 单一数据源 + 唯一分时画手（去掉重复的 1 秒重绘，交给 dr） */
+/* flow.js v19 —— 单一数据源 + 唯一分时画手 + 长按十字线 */
 (function(){
  function R(){return Math.random()}
+ var cx=-1;
  var cv0=document.getElementById('cv');
  if(cv0&&!document.getElementById('fcv')){
   var f=document.createElement('canvas');
@@ -118,6 +119,24 @@
   ls.forEach(function(v,i){var yy=Y(v.p);i?x.lineTo(X(i),yy):x.moveTo(X(i),yy)});x.stroke();
   var last=ls[ls.length-1];
   x.fillStyle='#e6edf3';x.beginPath();x.arc(X(ls.length-1),Y(last.p),2.5,0,6.283);x.fill();
+  if(cx>=0){
+   var cxx=Math.max(L,Math.min(Rr,cx));
+   var cm=Math.max(0,Math.min(240,Math.round((cxx-L)/(Rr-L)*240)));
+   var p2=null,i2,mm2;
+   for(i2=0;i2<ls.length;i2++){mm2=(ls[i2].m!=null?ls[i2].m:i2);if(mm2>=cm){p2=ls[i2].p;break}}
+   if(p2==null)p2=ls[ls.length-1].p;
+   x.strokeStyle='#8899aa';x.lineWidth=1;x.setLineDash([3,3]);
+   x.beginPath();x.moveTo(cxx,T);x.lineTo(cxx,VY+VH);x.stroke();
+   x.beginPath();x.moveTo(L,Y(p2));x.lineTo(Rr,Y(p2));x.stroke();
+   x.setLineDash([]);
+   var pc2=(p2-pre)/pre*100;
+   x.font='10px sans-serif';x.textAlign='left';
+   var s1=(typeof fmtTime==='function'?fmtTime(cm):cm+'')+'  '+p2.toFixed(2)+'  '+(pc2>0?'+':'')+pc2.toFixed(2)+'%';
+   var w3=x.measureText(s1).width;
+   x.fillStyle='rgba(11,15,20,.88)';x.fillRect(L+2,T+2,w3+6,13);
+   x.fillStyle=pc2>0?'#ff5252':(pc2<0?'#00d09c':'#c9d4e0');
+   x.fillText(s1,L+5,T+12);
+  }
  }
  function drawFlow(s){
   var c=document.getElementById('fcv');if(!c||!s||!s._fl)return;
@@ -163,4 +182,13 @@
   if(typeof mode==='undefined'||mode==='t')myTrend(s);
   drawFlow(s);
  };
+ (function attach(){
+  var c=document.getElementById('cv');if(!c||c.__cx)return;
+  c.__cx=1;
+  function on(e){if(typeof mode!=='undefined'&&mode!=='t')return;var t=e.touches&&e.touches[0];if(!t)return;var r=c.getBoundingClientRect();cx=t.clientX-r.left;myTrend(getStock(sel));}
+  c.addEventListener('touchstart',function(e){if(e.touches.length===1)on(e)},{passive:true});
+  c.addEventListener('touchmove',function(e){if(cx>=0&&e.touches.length===1)on(e)},{passive:true});
+  c.addEventListener('touchend',function(){if(cx>=0){cx=-1;myTrend(getStock(sel))}},{passive:true});
+  c.addEventListener('touchcancel',function(){if(cx>=0){cx=-1;myTrend(getStock(sel))}},{passive:true});
+ })();
 })();
