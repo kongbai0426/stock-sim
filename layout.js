@@ -1,6 +1,6 @@
-/* layout.js v6 —— 版本号 AX9 · 双栏 · 封单可被真实砸开 */
+/* layout.js v7 —— 版本号 AX10 · 双栏 · 封单可被真实砸开 */
 (function(){
-  var VER='AX9';
+  var VER='AX10';
   function setTitle(){try{document.title='模拟股市 v8 M6 '+VER}catch(e){}}
   setTitle();setTimeout(setTitle,0);setTimeout(setTitle,600);
   setInterval(function(){if(document.title!=='模拟股市 v8 M6 '+VER)document.title='模拟股市 v8 M6 '+VER},1500);
