@@ -1,13 +1,16 @@
-/* layout.js v2 —— 详情页双栏：左 图表+交易面板；右 五档+明细 */
+/* layout.js v3 —— 详情页双栏（修整页左右晃） */
 (function(){
   var dt=document.getElementById('dt');if(!dt)return;
   var cv=document.getElementById('cv'),tabs=dt.querySelector('.tabs2');
   if(!cv||!tabs)return;
   var css=document.createElement('style');
   css.textContent=
-   '#dmain{display:flex;gap:6px;padding:0 4px;align-items:flex-start}'
-   +'#dmain .dl{flex:1 1 64%;min-width:0}'
-   +'#dmain .dr{flex:0 0 35%;min-width:0;border-left:1px solid #16202b;padding-left:2px}'
+   'html,body{max-width:100%;overflow-x:hidden}'
+   +'#dt{overflow-x:hidden}'
+   +'canvas{max-width:100%}'
+   +'#dmain{display:flex;gap:6px;padding:0 4px;align-items:flex-start;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden}'
+   +'#dmain .dl{flex:1 1 0;min-width:0}'
+   +'#dmain .dr{flex:0 0 34%;max-width:34%;min-width:0;border-left:1px solid #16202b;padding-left:2px}'
    +'#dmain .dr .oh{padding-left:8px;margin:2px 0 2px}'
    +'#dmain .dr .lv5{padding:1px 6px;font-size:11.5px;line-height:19px}'
    +'#dmain .dr .lv5 .lab{width:22px;flex:0 0 22px;font-size:11px}'
@@ -22,8 +25,7 @@
    +'#dmain .dl .f{padding:6px 6px 0}'
    +'#dmain .dl .f .ln input{height:34px;font-size:16px}';
   document.head.appendChild(css);
-  var main=document.createElement('div');
-  main.id='dmain';
+  var main=document.createElement('div');main.id='dmain';
   var dl=document.createElement('div');dl.className='dl';
   var dr=document.createElement('div');dr.className='dr';
   main.appendChild(dl);main.appendChild(dr);
