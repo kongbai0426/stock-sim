@@ -1,7 +1,4 @@
-/* klinefix.js —— 日K不增长修复
-   病根：multi.js 的 extDaily 把 s.kline 快照进 s._ext 后永不更新，
-        收盘新生成的日线进不去，所以日K只有"今天"这一根在变。
-   做法：3400根假历史只生成一次并缓存，_ext 每次用 假历史+真实kline 重拼。 */
+/* klinefix.js v2 —— 日K历史重建（只在 dr 时同步，不再包 stepMinute） */
 (function(){
   function rr(n){n=(n*1103515245+12345)&0x7fffffff;return((n>>>8)&0xffff)/65535}
   function seedOf(s){var n=0;for(var i=0;i<s.code.length;i++)n=n*31+s.code.charCodeAt(i);return n||7}
@@ -27,6 +24,4 @@
   }
   var odr=window.dr;
   window.dr=function(){sync(getStock(sel));if(odr)odr()};
-  var ost=window.stepMinute;
-  window.stepMinute=function(){if(ost)ost();sync(getStock(sel))};
 })();
