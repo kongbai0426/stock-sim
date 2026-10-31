@@ -1,4 +1,4 @@
-/* flow.js v13 —— 每分钟按真实成交量拆 6~12 笔（市值分档）；成交额=量柱=明细=资金 */
+/* flow.js v15 —— 分钟量拆笔 + 绘图右边界与分时对齐(w-2) */
 (function(){
  function R(){return Math.random()}
  var cv0=document.getElementById('cv');
@@ -78,7 +78,7 @@
   var r=c.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2),w=r.width||300,hh=104;
   c.width=w*d;c.height=hh*d;c.style.height=hh+'px';
   var x=c.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,hh);
-  var L=6,Rr=w-86,T=14,B=hh-10,mx=1;
+  var L=4,Rr=w-2,T=14,B=hh-10,mx=1;
   for(var i=0;i<a.length;i++){var p=a[i];
    if(Math.abs(p.xl)>mx)mx=Math.abs(p.xl);
    if(Math.abs(p.l)>mx)mx=Math.abs(p.l);
@@ -102,8 +102,8 @@
   x.fillStyle='#6aa9ff';x.fillText('中',L+44,9);
   x.fillStyle='#00d09c';x.fillText('小',L+60,9);
   var last=a[a.length-1];x.textAlign='right';
-  x.fillStyle='#ff5252';x.fillText((last.xl/1e8).toFixed(2),w-2,Y(last.xl)+3);
-  x.fillStyle='#00d09c';x.fillText((last.s/1e8).toFixed(2),w-2,Y(last.s)+3);
+  x.fillStyle='#ff5252';x.fillText((last.xl/1e8).toFixed(2),w-1,Y(last.xl)+3);
+  x.fillStyle='#00d09c';x.fillText((last.s/1e8).toFixed(2),w-1,Y(last.s)+3);
  }
  var oldDr=window.dr;
  window.dr=function(){acc();if(oldDr)oldDr();drawFlow(getStock(sel))};
