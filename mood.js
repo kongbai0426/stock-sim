@@ -1,4 +1,4 @@
-/* mood.js v6 —— 板块主线(多日) + 大盘情绪 + 波动倍率 */
+/* mood.js v7 —— 板块主线(多日) + 大盘情绪 + 波动倍率（本版仅新增 __mood hook） */
 (function(){
   var day=-1,theme=[],themeDays=0,moodT=0,strength=1,kvol=1;
   function newDay(){
@@ -36,6 +36,7 @@
       st.anchor=st.lfair;
     }
   }
+  window.__mood=tick;
   var old=window.stepMinute,real=window.__stepReal;
   window.stepMinute=function(){old();tick();};
   if(real){window.__stepReal=function(){real();tick();};}
