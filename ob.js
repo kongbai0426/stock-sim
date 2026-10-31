@@ -1,4 +1,5 @@
-/* ob.js v26 —— 封板粘住（只有封单被吃光才开板）；盘口恒补满五档（新增 __ob hook） */
+/* ob.js v26 —— 封板粘住（只有封单被吃光才开板）；盘口恒补满五档
+   本版仅新增 window.__ob（供 loop.js 显式调度），行为不变 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
