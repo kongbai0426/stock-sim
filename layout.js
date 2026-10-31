@@ -1,6 +1,6 @@
 /* layout.js v13 —— 版本号 AX20 · 双栏 · 封单可砸开 · 市场数据对账 */
 (function(){
-  var VER='AX22';
+  var VER='AX23';
   function setTitle(){try{document.title='模拟股市 v8 M6 '+VER}catch(e){}}
   setTitle();setTimeout(setTitle,0);setTimeout(setTitle,600);
   setInterval(function(){if(document.title!=='模拟股市 v8 M6 '+VER)document.title='模拟股市 v8 M6 '+VER},1500);
