@@ -1,4 +1,4 @@
-/* ob.js v27 —— 涨停幅度按板块：主板/中小板 ±10%，创业板300/301、科创板688/689 ±20%，ST ±5% */
+/* ob.js v28 —— 涨跌幅按板块 + 获利盘/套牢盘：连板后自动转派发，避免无限涨停 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -194,6 +194,17 @@
    if(P===3&&M.minute>=215)dirK=0.95;
    if(P===4&&M.minute>=215)dirK=0.70;
    if(P===0&&s._dmp>0){dirK=-1.2;s._dmp-=1/TK;}
+   var kl=s.kline||[];
+   if(kl.length>3){
+    var ref=kl[kl.length-4].c;
+    if(ref>0){
+     var gain=s.price/ref-1;
+     if(gain>0.22)dirK-=1.3;
+     else if(gain<-0.22)dirK+=1.0;
+    }
+   }
+   if(dirK>2)dirK=2;
+   if(dirK<-2)dirK=-2;
    var yzB=yz.on?1:0;
    var yzD=(yz.dump>0&&M.minute<=8)?1:0;
    var base=flowQ(s)*vkP*(0.75+0.25*(s._vk||1));
