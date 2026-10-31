@@ -1,4 +1,4 @@
-/* ob.js v29 —— 目标涨幅跟踪：主力四阶段给目标、价格自己收敛，杜绝无限涨停 */
+/* ob.js v30 —— 修复：换日清封板 / 卖单能真正吃掉封单 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -100,12 +100,20 @@
     if(!ob.asks.length){s.price=s.up;s._seal=1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.asks[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
+    if(s._seal===-1&&c2(a.p)===c2(s.dn)){
+     s._sealQty=(s._sealQty||0)-take;
+     if(s._sealQty<=0){s._sealQty=0;s._seal=0;s.price=f2(c2(s.dn)+1);}
+    }
     if(a.q<=0)ob.asks.shift();
    }else{
     if(s._seal===-1){s._sealQty=(s._sealQty||0)+left;left=0;break}
     if(!ob.bids.length){s.price=s.dn;s._seal=-1;s._sealQty=(s._sealQty||0)+left;left=0;break}
     a=ob.bids[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;s.price=cl(s,a.p);
+    if(s._seal===1&&c2(a.p)===c2(s.up)){
+     s._sealQty=(s._sealQty||0)-take;
+     if(s._sealQty<=0){s._sealQty=0;s._seal=0;s.price=f2(c2(s.up)-1);}
+    }
     if(a.q<=0)ob.bids.shift();
    }
   }
@@ -178,6 +186,7 @@
    if(s._flDay!==M.day){
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
     s._pb=[];s._ph=0;s._sq=0;s._px=null;s._vm=null;s._vk=1;s._dmp=0;
+    s._seal=0;s._sealQty=0;
     window.buildBook(s);
    }
    if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
