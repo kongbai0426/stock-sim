@@ -1,10 +1,11 @@
-/* clock.js v4 —— 1真实秒 = 6模拟秒（一天 240 分钟 ≈ 40 分钟）
-   分钟内只让“最新价 / 盘口”小幅跳动，不再往 hist 里塞插值点。
-   于是 hist 每天只有 240 个点，量柱也是 240 根，和撮合次数一一对应。 */
+/* clock.js v5 —— 1真实秒 = 6模拟秒（一天240分钟≈40分钟）
+   分钟内只让最新价/盘口小幅跳动，不往 hist 塞插值点。
+   本版仅新增 __engineStep / __clock 两个 hook，行为不变。 */
 (function(){
   var REAL=window.stepMinute, PER=10, SUB=2, c=0;
   if(typeof REAL!=='function')return;
   window.__stepReal=REAL;
+  window.__engineStep=REAL;
   function fix(st){
     var p=Math.exp(st.lf);
     if(p>st.up)p=st.up;
@@ -34,4 +35,5 @@
     if(c>=PER){c=0;REAL();}
     else{for(var j=1;j<=SUB;j++)sub();}
   };
+  window.__clock=window.stepMinute;
 })();
