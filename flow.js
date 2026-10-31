@@ -1,4 +1,4 @@
-/* flow.js v17 —— 单一数据源：分时图 / 量柱 / 成交额 / 明细 / 资金四线 全部来自同一批成交 */
+/* flow.js v18 —— 单一数据源 + 唯一分时画手（去掉重复的 1 秒重绘，交给 dr） */
 (function(){
  function R(){return Math.random()}
  var cv0=document.getElementById('cv');
@@ -56,15 +56,15 @@
    if(!h)continue;
    if(s._vm2!==M.minute){
     s._vm2=M.minute;
-    var dv=(s.vol||0)-(s._vs||0);      // 本 tick 新增量(手)：引擎整分钟量 + ob 的几笔
-    var obv=h.v||0;                    // ob 本分钟已经记进去的量(手)
-    var V=dv-obv;if(V<0)V=0;           // 引擎本分钟真实量(手)
+    var dv=(s.vol||0)-(s._vs||0);
+    var obv=h.v||0;
+    var V=dv-obv;if(V<0)V=0;
     var d=(s.price>=(s._vp||s.price))?1:-1;s._vp=s.price;
     s._vv+=V;s._va+=V*100*s.price;
-    h.v=V;                             // 量柱 = 本分钟真实量
-    if(V>0)gen(s,V,d);                 // 拆 6~12 笔，写明细 + 资金
+    h.v=V;
+    if(V>0)gen(s,V,d);
    }
-   s.vol=s._vv;s.amount=s._va;s._vs=s._vv;   // 成交额只认明细这批
+   s.vol=s._vv;s.amount=s._va;s._vs=s._vv;
    if(s._ga&&s._ga.length)s._tp=s._ga.slice();
    var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
    s._fl.xl=F.xl;s._fl.l=F.l;s._fl.m=F.m;s._fl.s=F.s;
@@ -160,9 +160,7 @@
   if(oldDr)oldDr();
   var s=getStock(sel);
   if(!s)return;
-  if(typeof mode==='undefined'||mode==='t')myTrend(s);   // 最后一步强制重绘，谁也抢不过
+  if(typeof mode==='undefined'||mode==='t')myTrend(s);
   drawFlow(s);
  };
- setInterval(function(){var d=document.getElementById('dt');if(d&&d.classList.contains('on'))drawFlow(getStock(sel))},1000);
- try{document.title=(document.title||'').replace(/ AX\d+/g,'')+' AX8'}catch(e){}
 })();
