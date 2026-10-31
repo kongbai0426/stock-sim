@@ -1,4 +1,4 @@
-/* flow.js v20 —— 单一数据源 + 唯一分时画手 + 十字线 + 横轴时间 */
+/* flow.js v21 —— 金额由明细累加、量柱锁定分钟量，对账做到 0 差 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -42,7 +42,7 @@
   s._ga=arr.concat(s._ga||[]);
   if(s._ga.length>40)s._ga.length=40;
   s._tp=s._ga.slice();
-  for(i=0;i<arr.length;i++)s._fx[bk(arr[i].a)]+=d*arr[i].a;
+  for(i=0;i<arr.length;i++){s._fx[bk(arr[i].a)]+=d*arr[i].a;s._va+=arr[i].a;}
  }
  function acc(){
   if(typeof M==='undefined'||M.phase!=='open')return;
@@ -51,7 +51,7 @@
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
     s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._fl.hist=[];s._ga=[];
-    s._vv=0;s._va=0;s._vs=0;s._vp=s.price;s._vm2=-1;
+    s._vv=0;s._va=0;s._vs=0;s._vt=0;s._vp=s.price;s._vm2=-1;
    }
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
@@ -61,11 +61,11 @@
     var obv=h.v||0;
     var V=dv-obv;if(V<0)V=0;
     var d=(s.price>=(s._vp||s.price))?1:-1;s._vp=s.price;
-    s._vv+=V;s._va+=V*100*s.price;
-    h.v=V;
+    s._vv+=V;s._vt=V;
     if(V>0)gen(s,V,d);
    }
-   s.vol=s._vv;s.amount=s._va;s._vs=s._vv;
+   h.v=s._vt||0;
+   s.vol=s._vv;s._vs=s._vv;s.amount=s._va;
    if(s._ga&&s._ga.length)s._tp=s._ga.slice();
    var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
    s._fl.xl=F.xl;s._fl.l=F.l;s._fl.m=F.m;s._fl.s=F.s;
