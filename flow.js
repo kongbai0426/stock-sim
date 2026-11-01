@@ -1,4 +1,4 @@
-/* flow.js v25 —— 量 = 基准 × (0.55 + 单分钟振幅×400)，逐秒累积 */
+/* flow.js v26 —— 量 = 基准 × (0.55 + 单分钟振幅×400)，逐秒累积 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -122,8 +122,9 @@
     x.fillStyle=col;x.fillText(t2,w-2,y+2);
    }
   }
-  var vmax=1;ls.forEach(function(v){if(v.v>vmax)vmax=v.v});
-  var bw=Math.max(1,(Rr-L)/240*0.7);
+  var _va=ls.map(function(v){return v.v||0}).sort(function(a,b){return a-b});
+  var vmax=Math.max(1,_va[Math.floor(_va.length*0.96)]||1);
+  var bw=Math.max(1,(Rr-L)/Math.max(1,ls.length)*0.78);
   ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.5)':'rgba(0,208,156,.5)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
   var sp=0,sv=0,avg=[];
   ls.forEach(function(v){sp+=v.p*v.v;sv+=v.v;avg.push(sv?sp/sv:v.p)});
