@@ -1,4 +1,4 @@
-/* flow.js v26 —— 量 = 基准 × (0.55 + 单分钟振幅×400)，逐秒累积 */
+/* flow.js v27 —— 量柱长尾分布 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -69,13 +69,15 @@
      else{H.push({t:mm,xl:F.xl,l:F.l,m:F.m,s:F.s});if(H.length>240)H.shift()}
     }
     s._vp=px;s._vm2=M.minute;s._vcur=0;s._mhi=px;s._mlo=px;
+    s._vt=Math.pow(R(),2.2);
    }
    if(px>s._mhi)s._mhi=px;
    if(px<s._mlo)s._mlo=px;
    var vb=s.volBase||1000;
    var amp=s._mlo>0?(s._mhi-s._mlo)/s._mlo:0;
-   var vNow=Math.round(vb*(0.55+Math.min(amp*400,2.2))*(0.85+R()*0.3));
-   var lo2=Math.round(vb*0.25),hi2=Math.round(vb*3.2);
+   if(s._vt==null)s._vt=Math.pow(R(),2.2);
+   var vNow=Math.round(vb*(0.06+s._vt*(0.55+Math.min(amp*1100,3.2))*(0.75+R()*0.5)));
+   var lo2=Math.round(vb*0.03),hi2=Math.round(vb*4.0);
    if(vNow<lo2)vNow=lo2;
    if(vNow>hi2)vNow=hi2;
    var dv=vNow-(s._vcur||0);
@@ -125,7 +127,7 @@
   var _va=ls.map(function(v){return v.v||0}).sort(function(a,b){return a-b});
   var vmax=Math.max(1,_va[Math.floor(_va.length*0.96)]||1);
   var bw=Math.max(1,(Rr-L)/240*0.78);
-  ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.5)':'rgba(0,208,156,.5)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
+  ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.55)':'rgba(0,208,156,.55)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
   var sp=0,sv=0,avg=[];
   ls.forEach(function(v){sp+=v.p*v.v;sv+=v.v;avg.push(sv?sp/sv:v.p)});
   x.strokeStyle='#e8b339';x.lineWidth=1;x.beginPath();
