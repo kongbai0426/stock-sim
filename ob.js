@@ -1,4 +1,4 @@
-/* ob.js v32 —— 档位变薄/单笔变粗/关键位挂大单（看得见成交过程） */
+/* ob.js v33 —— 档位变薄/单笔变粗/关键位挂单 + 分钟级脉冲（时快时慢） */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -215,6 +215,7 @@
    if(!s._mb)s._mb={ph:0,left:15+Math.floor(R()*26)};
    if(!s._yz)s._yz={on:0,t:0,dump:0};
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
+   if(s._pm!==M.minute){s._pm=M.minute;s._pulse=(R()<0.05)?(1.6+R()*2.6):1}
    var P=s._mb.ph,yz=s._yz;
    var vkP=[0.70,1.30,0.50,2.00,1.20][P];
    var tgt=[0.002,0.006,-0.004,0.015,-0.012][P];
@@ -240,7 +241,7 @@
    var xlP=0;
    if(P===3||yzB){xlP=mAmt*0.4;mAmt=mAmt*0.6;}
    else{midAmt+=mAmt;mAmt=0;}
-   var aggr=mAmt+hAmt+midAmt*0.5;
+   var aggr=(mAmt+hAmt+midAmt*0.5)*(s._pulse||1);
    var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
    var q=Math.round(aggr/s.price/100)*100,traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
