@@ -1,4 +1,4 @@
-/* flow.js v23 —— 量随振幅走，但每分钟夹在 0.25~3.0 倍基准量 */
+/* flow.js v24 —— 量 = 基准 × (当日累计涨跌 + 分钟波动)，趋势越大越放量 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -61,9 +61,10 @@
     var ret=Math.abs(px/p0-1);
     s._mp0=px;
     var vb=s.volBase||1000;
-    var mult=0.9+Math.min(ret*300,2.0);
-    var V=Math.round(vb*mult*(0.7+R()*0.6));
-    var lo2=Math.round(vb*0.25),hi2=Math.round(vb*3.0);
+    var dm=Math.abs(s.prev?(px/s.prev-1):0);
+    var mult=0.7+Math.min(dm*18,1.9)+Math.min(ret*200,1.1);
+    var V=Math.round(vb*mult*(0.8+R()*0.4));
+    var lo2=Math.round(vb*0.3),hi2=Math.round(vb*3.2);
     if(V<lo2)V=lo2;
     if(V>hi2)V=hi2;
     s._vt=V;s._tk=0;
