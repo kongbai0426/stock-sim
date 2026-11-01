@@ -1,4 +1,4 @@
-/* flow.js v22 —— 量随真实振幅走（拉升/跳水放量），明细/资金同源 */
+/* flow.js v23 —— 量随振幅走，但每分钟夹在 0.25~3.0 倍基准量 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -60,8 +60,12 @@
     var px=s.price||1,p0=s._mp0||px;
     var ret=Math.abs(px/p0-1);
     s._mp0=px;
-    var V=Math.round((s.volBase||1000)*(0.9+ret*400)*(0.65+R()*0.7));
-    if(V<1)V=1;
+    var vb=s.volBase||1000;
+    var mult=0.9+Math.min(ret*300,2.0);
+    var V=Math.round(vb*mult*(0.7+R()*0.6));
+    var lo2=Math.round(vb*0.25),hi2=Math.round(vb*3.0);
+    if(V<lo2)V=lo2;
+    if(V>hi2)V=hi2;
     s._vt=V;s._tk=0;
     s._vv+=V;
     var d=(px>=(s._vp||px))?1:-1;s._vp=px;
