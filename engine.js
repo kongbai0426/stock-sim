@@ -75,9 +75,8 @@ function stepMinute(){
   st.lf=Math.log(st.price);
   if(st.price>st.high)st.high=st.price;
   if(st.price<st.low)st.low=st.price;
-  var us=1+1.2*Math.exp(-M.minute/25)+0.7*Math.exp(-(240-M.minute)/25);
-  var bv=st.volBase*us*Math.exp(gauss()*0.45)*(0.45+Math.abs(ret)*260);
-  if(rnd()<0.012)bv*=2+rnd()*4;
+  var us=1+0.30*Math.exp(-M.minute/30)+0.22*Math.exp(-(240-M.minute)/30);
+  var bv=st.volBase*us*Math.exp(gauss()*0.32)*(0.55+Math.min(Math.abs(ret)*380,1.7));
   var v=Math.max(1,Math.round(bv));
   st.vol+=v;st.amount+=v*st.price;
   st.hist.push({p:st.price,v:v,m:M.minute});
