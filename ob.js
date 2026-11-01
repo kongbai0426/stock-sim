@@ -1,4 +1,4 @@
-/* ob.js v33 —— 档位变薄/单笔变粗/关键位挂单 + 分钟级脉冲（时快时慢） */
+/* ob.js v35 —— 档位变薄/单笔变粗/关键位挂单 + 分钟级脉冲 + 急拉急砸 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -230,6 +230,14 @@
    else if(dr<-band)dirK=1.2;
    if(yz.dump>0&&M.minute<=8)dirK-=0.5;
    if(P===0&&s._dmp>0){dirK=-0.7;s._dmp-=1/TK;}
+   if(s._jtm!==M.minute){
+    s._jtm=M.minute;
+    if(s._jpt>0){s._jpt--;}
+    else if(M.minute>2&&M.minute<235&&R()<(s._hot||s._seal?0.022:0.008)){
+     s._jpt=2+Math.floor(R()*4);s._jd=R()<0.58?1:-1;s._jm=0.5+R()*1.0;
+    }
+   }
+   if(s._jpt>0){dirK+=s._jd*s._jm;}
    if(dirK>1.5)dirK=1.5;
    if(dirK<-1.5)dirK=-1.5;
    var yzB=yz.on?1:0;
