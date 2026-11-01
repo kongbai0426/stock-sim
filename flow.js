@@ -1,4 +1,4 @@
-/* flow.js v21 —— 金额由明细累加、量柱锁定分钟量，对账做到 0 差 */
+/* flow.js v22 —— 量随真实振幅走（拉升/跳水放量），明细/资金同源 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -51,20 +51,25 @@
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
     s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._fl.hist=[];s._ga=[];
-    s._vv=0;s._va=0;s._vs=0;s._vt=0;s._vp=s.price;s._vm2=-1;
+    s._vv=0;s._va=0;s._vt=0;s._tk=0;s._mp0=s.price;s._vp=s.price;s._vm2=-1;
    }
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
    if(s._vm2!==M.minute){
     s._vm2=M.minute;
-    var dv=(s.vol||0)-(s._vs||0);
-    var obv=h.v||0;
-    var V=dv-obv;if(V<0)V=0;
-    var d=(s.price>=(s._vp||s.price))?1:-1;s._vp=s.price;
-    s._vv+=V;s._vt=V;
-    if(V>0)gen(s,V,d);
+    var px=s.price||1,p0=s._mp0||px;
+    var ret=Math.abs(px/p0-1);
+    s._mp0=px;
+    var V=Math.round((s.volBase||1000)*(0.9+ret*400)*(0.65+R()*0.7));
+    if(V<1)V=1;
+    s._vt=V;s._tk=0;
+    s._vv+=V;
+    var d=(px>=(s._vp||px))?1:-1;s._vp=px;
+    gen(s,V,d);
    }
-   h.v=s._vt||0;
+   s._tk=(s._tk||0)+1;
+   var frac=s._tk/10;if(frac>1)frac=1;
+   h.v=Math.round((s._vt||0)*frac);
    s.vol=s._vv;s._vs=s._vv;s.amount=s._va;
    if(s._ga&&s._ga.length)s._tp=s._ga.slice();
    var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
