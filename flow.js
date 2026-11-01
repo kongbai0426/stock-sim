@@ -124,7 +124,7 @@
   }
   var _va=ls.map(function(v){return v.v||0}).sort(function(a,b){return a-b});
   var vmax=Math.max(1,_va[Math.floor(_va.length*0.96)]||1);
-  var bw=Math.max(1,(Rr-L)/Math.max(1,ls.length)*0.78);
+  var bw=Math.max(1,(Rr-L)/240*0.78);
   ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.5)':'rgba(0,208,156,.5)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
   var sp=0,sv=0,avg=[];
   ls.forEach(function(v){sp+=v.p*v.v;sv+=v.v;avg.push(sv?sp/sv:v.p)});
