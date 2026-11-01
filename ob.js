@@ -1,4 +1,4 @@
-/* ob.js v31 —— 真实化：小目标涨幅 + 硬边带 + 3% 强势日 */
+/* ob.js v32 —— 档位变薄/单笔变粗/关键位挂大单（看得见成交过程） */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -25,47 +25,64 @@
   var b=baseQ(s),span=Math.max(1,c2(s.up)-c2(s.dn));
   var up=(c2(s.up)-c2(s.price))/span,dn=(c2(s.price)-c2(s.dn))/span;
   var thin=1-Math.max(up,dn)*0.7;if(thin<0.2)thin=0.2;
-  var q=Math.round(b*(0.6+R()*0.9)*thin);
+  var q=Math.round(b*(0.20+R()*0.30)*thin);
   if(q<100)q=100;
+  return q;
+ }
+ function depAt(s,p){
+  var q=dep(s);
+  var f=window.__lvlOf;
+  if(f){
+   try{
+    var L=f(s);
+    if(L&&L.length){
+     for(var j=0;j<L.length;j++){
+      if(Math.abs(L[j].p-p)<=p*0.004){q=Math.round(q*(3+R()*3));break}
+     }
+    }
+   }catch(e){}
+  }
   return q;
  }
  window.buildBook=function(s){
   sealSync(s);
-  var b=c2(s.price),bids=[],asks=[],i,p;
+  var b=c2(s.price),bids=[],asks=[],i,pb,pa;
   if(s._seal===1){
    bids=[{p:s.up,q:s._sealQty}];
-   for(i=1;i<=4;i++){p=Math.max(c2(s.dn),c2(s.up)-i);bids.push({p:f2(p),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
+   for(i=1;i<=4;i++){pb=Math.max(c2(s.dn),c2(s.up)-i);bids.push({p:f2(pb),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
    s.book={bids:bids,asks:[]};s._ob=s.book;return;
   }
   if(s._seal===-1){
    asks=[{p:s.dn,q:s._sealQty}];
-   for(i=1;i<=4;i++){p=Math.min(c2(s.up),c2(s.dn)+i);asks.push({p:f2(p),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
+   for(i=1;i<=4;i++){pa=Math.min(c2(s.up),c2(s.dn)+i);asks.push({p:f2(pa),q:Math.round(baseQ(s)*(0.15+R()*0.35))})}
    s.book={bids:[],asks:asks};s._ob=s.book;return;
   }
   for(i=0;i<5;i++){
-   bids.push({p:f2(Math.max(c2(s.dn),b-i)),q:dep(s)});
-   asks.push({p:f2(Math.min(c2(s.up),b+1+i)),q:dep(s)});
+   pb=f2(Math.max(c2(s.dn),b-i));pa=f2(Math.min(c2(s.up),b+1+i));
+   bids.push({p:pb,q:depAt(s,pb)});
+   asks.push({p:pa,q:depAt(s,pa)});
   }
   s.book={bids:bids,asks:asks};s._ob=s.book;
  };
  function align(s){
   if(!s.book||s._seal)return;
-  var ob=s.book,b=c2(s.price),p;
+  var ob=s.book,b=c2(s.price),p,pa;
   ob.bids=ob.bids.filter(function(x){return c2(x.p)<=b});
   ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
   ob.bids.sort(function(x,y){return y.p-x.p});
   ob.asks.sort(function(x,y){return x.p-y.p});
-  if(!ob.bids.length||c2(ob.bids[0].p)!==b)ob.bids.unshift({p:f2(b),q:dep(s)});
-  if(!ob.asks.length||c2(ob.asks[0].p)!==b+1)ob.asks.unshift({p:f2(Math.min(c2(s.up),b+1)),q:dep(s)});
+  if(!ob.bids.length||c2(ob.bids[0].p)!==b)ob.bids.unshift({p:f2(b),q:depAt(s,f2(b))});
+  pa=f2(Math.min(c2(s.up),b+1));
+  if(!ob.asks.length||c2(ob.asks[0].p)!==b+1)ob.asks.unshift({p:pa,q:depAt(s,pa)});
   while(ob.bids.length<5){
    p=c2(ob.bids[ob.bids.length-1].p)-1;
    if(p<c2(s.dn)||p>=c2(ob.bids[ob.bids.length-1].p))break;
-   ob.bids.push({p:f2(p),q:dep(s)});
+   ob.bids.push({p:f2(p),q:depAt(s,f2(p))});
   }
   while(ob.asks.length<5){
    p=c2(ob.asks[ob.asks.length-1].p)+1;
    if(p>c2(s.up)||p<=c2(ob.asks[ob.asks.length-1].p))break;
-   ob.asks.push({p:f2(p),q:dep(s)});
+   ob.asks.push({p:f2(p),q:depAt(s,f2(p))});
   }
   while(ob.bids.length>5)ob.bids.pop();
   while(ob.asks.length>5)ob.asks.pop();
@@ -80,7 +97,7 @@
    if(!s.book.asks.length||c2(s.book.asks[0].p)!==c2(s.dn)){window.buildBook(s);return}
    s.book.bids=[];s.book.asks[0].q=s._sealQty;
   }else{
-   var ob=s.book,i,l,cap=Math.round(baseQ(s)*3),add=baseQ(s)*0.03;
+   var ob=s.book,i,l,cap=Math.round(baseQ(s)*8),add=baseQ(s)*0.012;
    for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
    for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
   }
@@ -219,7 +236,7 @@
    var amt=base*s.price/TK;
    var mAmt=amt*(0.05+R()*0.10)*dirK;
    var hAmt=0;
-   var midAmt=amt*(0.04+R()*0.08)*(R()<0.5?1:-1);
+   var midAmt=amt*(0.12+R()*0.20)*(R()<0.5?1:-1);
    var xlP=0;
    if(P===3||yzB){xlP=mAmt*0.4;mAmt=mAmt*0.6;}
    else{midAmt+=mAmt;mAmt=0;}
