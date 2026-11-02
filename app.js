@@ -194,7 +194,9 @@ on('setcap',function(){
  if(!(w>=0))return ts('请输入资金（万元）');
  if(setCapital(w*10000)){ts('资金已设为 '+(w*10000).toFixed(0)+' 元');rm();rd()}
 });
-setInterval(function(){
+
+var _spd=1,_tm=null;
+function _tick(){
  if(running){stepMinute();matchAll()}
  if(E('hTime'))E('hTime').textContent='第'+M.day+'日 '+fmtTime(M.minute);
  if(E('hIndex')){var ic=indexChange();E('hIndex').textContent=M.index.toFixed(2)+' '+sg(ic)+'%';E('hIndex').className='m '+cls(ic)}
@@ -203,6 +205,43 @@ setInterval(function(){
  if(E('p3')&&E('p3').classList.contains('on'))rp();
  if(E('p4')&&E('p4').classList.contains('on'))rm();
  if(E('dt')&&E('dt').classList.contains('on')){rd();dr()}
-},1000);
+}
+function _start(){if(_tm)clearInterval(_tm);_tm=setInterval(_tick,1000/_spd);}
+_start();
+(function(){
+ var ctrl=document.querySelector('.ctrl');
+ if(!ctrl)return;
+ var b=document.createElement('button');
+ b.id='btnSpeed';b.textContent='1x';b.style.flex='0 0 52px';
+ ctrl.appendChild(b);
+ var list=[1,2,5,10,20];
+ var menu=document.createElement('div');
+ menu.style.cssText='position:fixed;z-index:999;background:#1a2432;border:1px solid #2a3644;border-radius:8px;padding:4px;display:none;box-shadow:0 6px 16px rgba(0,0,0,.55)';
+ var html='';
+ for(var i=0;i<list.length;i++){
+  html+='<div class="spdOpt" data-v="'+list[i]+'" style="padding:8px 20px;font-size:13px;color:'+(list[i]===1?'#e8b339':'#c9d4e0')+';white-space:nowrap">'+list[i]+'x</div>';
+ }
+ menu.innerHTML=html;
+ document.body.appendChild(menu);
+ b.onclick=function(e){
+  e.stopPropagation();
+  if(menu.style.display==='block'){menu.style.display='none';return;}
+  var r=b.getBoundingClientRect();
+  menu.style.left=r.left+'px';
+  menu.style.top=(r.bottom+4)+'px';
+  menu.style.display='block';
+ };
+ menu.onclick=function(e){
+  e.stopPropagation();
+  var v=e.target.getAttribute('data-v');
+  if(!v)return;
+  _spd=+v;b.textContent=_spd+'x';_start();
+  menu.style.display='none';
+  var opts=menu.querySelectorAll('.spdOpt');
+  for(var i=0;i<opts.length;i++)opts[i].style.color=(opts[i].getAttribute('data-v')===v?'#e8b339':'#c9d4e0');
+  ts('速度 '+_spd+'x');
+ };
+ document.addEventListener('click',function(){menu.style.display='none';});
+})();
 go('1');
 setTimeout(function(){if(MISS.length)ts('缺少元素：'+MISS.join('、'))},1000);
