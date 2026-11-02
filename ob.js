@@ -1,4 +1,4 @@
-/* ob.js v39 —— 吃光一档才跳价 */
+/* ob.js v41 —— 只补最优档，深层档位不乱跳 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -97,9 +97,9 @@
    if(!s.book.asks.length||c2(s.book.asks[0].p)!==c2(s.dn)){window.buildBook(s);return}
    s.book.bids=[];s.book.asks[0].q=s._sealQty;
   }else{
-   var ob=s.book,i,l,cap=Math.round(baseQ(s)*8),add=baseQ(s)*0.004;
-   for(i=0;i<ob.asks.length;i++){l=ob.asks[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
-   for(i=0;i<ob.bids.length;i++){l=ob.bids[i];l.q=Math.min(cap,l.q+Math.round(add*(0.2+R()*0.9)));if(l.q<100)l.q=100}
+   var ob=s.book,cap=Math.round(baseQ(s)*8),add=baseQ(s)*0.006;
+   if(ob.asks.length){var la=ob.asks[0];la.q=Math.min(cap,la.q+Math.round(add*(0.2+R()*0.9)));if(la.q<100)la.q=100;}
+   if(ob.bids.length){var lb=ob.bids[0];lb.q=Math.min(cap,lb.q+Math.round(add*(0.2+R()*0.9)));if(lb.q<100)lb.q=100;}
   }
   s._ob=s.book;
  }
@@ -218,9 +218,9 @@
    if(s._pm!==M.minute){s._pm=M.minute;s._pulse=(R()<0.05)?(1.6+R()*2.6):1}
    var P=s._mb.ph,yz=s._yz;
    var vkP=[0.70,1.30,0.50,2.00,1.20][P];
-   var tgt=[0.002,0.006,-0.004,0.015,-0.012][P];
-   if(P===3&&M.minute>=215)tgt=0.020;
-   if(P===4&&M.minute>=215)tgt=-0.016;
+   var tgt=[0.006,0.015,-0.008,0.030,-0.020][P];
+   if(P===3&&M.minute>=215)tgt=0.038;
+   if(P===4&&M.minute>=215)tgt=-0.028;
    if(yz.on)tgt=tgt*1.5;
    var dr=s.open?(s.price/s.open-1):0;
    var limPct=s.prev?(s.up/s.prev-1):0.10;
@@ -251,7 +251,7 @@
    else{midAmt+=mAmt;mAmt=0;}
    var aggr=(mAmt+hAmt+midAmt*0.5)*(s._pulse||1);
    var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
-   var q=Math.round(baseQ(s)*dirK*0.02*(s._pulse||1)),traded=0;
+   var q=Math.round(baseQ(s)*(dirK*0.03+(R()-0.5)*0.012)*(s._pulse||1)),traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    sealSync(s);
    if(s._seal===1&&R()<0.05){
