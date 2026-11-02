@@ -80,7 +80,6 @@ function stepMinute(){
   var v=Math.max(1,Math.round(bv));
   st.vol+=v;st.amount+=v*st.price;
   st.hist.push({p:st.price,v:v,m:M.minute});
-  buildBook(st);
  }
  var sum=0;
  for(var j=0;j<M.stocks.length;j++)sum+=M.stocks[j].price*M.stocks[j].shares;
@@ -121,9 +120,7 @@ function applyImpact(code,side,qtyShares,px){
   var lo=o.hist[o.hist.length-1];
   if(lo&&lo.m===M.minute){lo.p=o.price}
   else{o.hist.push({p:o.price,v:0,m:M.minute})}
-  buildBook(o);
  }
- buildBook(st);
 }
 function closeDay(){
  M.phase='closed';
