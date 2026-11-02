@@ -1,4 +1,4 @@
-/* ob.js v43 —— 去掉价格锁死，成交能真正推价 */
+/* ob.js v46 —— 吃穿卖盘顶涨停 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -65,7 +65,8 @@
   s.book={bids:bids,asks:asks};s._ob=s.book;
  };
  function align(s){
-  if(!s.book||s._seal)return;
+  if(!s.book)return;
+  if(s._seal===1||s._seal===-1)return;
   var ob=s.book,b=c2(s.price),p,pa;
   ob.bids=ob.bids.filter(function(x){return c2(x.p)<=b});
   ob.asks=ob.asks.filter(function(x){return c2(x.p)>b});
@@ -164,7 +165,14 @@
      pr(s,a.p,take,1);
      if(a.q<=0){s.price=cl(s,a.p);s.book.asks.shift();}
     }
-    if(rem>0){addBook(s,'buy',Math.min(o.price,s.price),rem);o._restQ=rem}
+    if(rem>0){
+     if(!s.book.asks.length&&c2(o.price)>=c2(s.up)){
+      s._seal=1;s._sealQty=(s._sealQty||0)+rem;s.price=s.up;
+     }else{
+      addBook(s,'buy',Math.min(o.price,s.price),rem);
+     }
+     o._restQ=rem;
+    }
    }else{
     while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
      var b=s.book.bids[0];take=Math.min(rem,b.q);b.q-=take;rem-=take;
@@ -173,7 +181,14 @@
      pr(s,b.p,take,-1);
      if(b.q<=0){s.price=cl(s,b.p);s.book.bids.shift();}
     }
-    if(rem>0){addBook(s,'sell',Math.max(o.price,s.price),rem);o._restQ=rem}
+    if(rem>0){
+     if(!s.book.bids.length&&c2(o.price)<=c2(s.dn)){
+      s._seal=-1;s._sealQty=(s._sealQty||0)+rem;s.price=s.dn;
+     }else{
+      addBook(s,'sell',Math.max(o.price,s.price),rem);
+     }
+     o._restQ=rem;
+    }
    }
   }
  };
