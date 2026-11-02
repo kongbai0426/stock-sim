@@ -1,4 +1,4 @@
-/* ob.js v46 —— 吃穿卖盘顶涨停 */
+/* ob.js v47 —— 成交量完全交给 flow.js */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -155,14 +155,12 @@
    var o=ACC.orders[i];
    if(o.status!=='pending')continue;
    var s=getStock(o.code);if(!s||!s.book)continue;
-   var rem=o.qty-o.filled,take,h2;
+   var rem=o.qty-o.filled,take;
    if(rem<=0)continue;
    if(o.side==='buy'){
     while(rem>0&&s.book.asks.length&&c2(s.book.asks[0].p)<=c2(o.price)){
      var a=s.book.asks[0];take=Math.min(rem,a.q);a.q-=take;rem-=take;
-     fill(o,a.p,take);s.vol+=take/100;
-     h2=s.hist[s.hist.length-1];if(h2)h2.v=(h2.v||0)+take/100;
-     pr(s,a.p,take,1);
+     fill(o,a.p,take);pr(s,a.p,take,1);
      if(a.q<=0){s.price=cl(s,a.p);s.book.asks.shift();}
     }
     if(rem>0){
@@ -176,9 +174,7 @@
    }else{
     while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
      var b=s.book.bids[0];take=Math.min(rem,b.q);b.q-=take;rem-=take;
-     fill(o,b.p,take);s.vol+=take/100;
-     h2=s.hist[s.hist.length-1];if(h2)h2.v=(h2.v||0)+take/100;
-     pr(s,b.p,take,-1);
+     fill(o,b.p,take);pr(s,b.p,take,-1);
      if(b.q<=0){s.price=cl(s,b.p);s.book.bids.shift();}
     }
     if(rem>0){
@@ -230,7 +226,6 @@
    sealSync(s);
    var h=s.hist[s.hist.length-1];
    if(!h)continue;
-   if(s._vm!==M.minute){s._vm=M.minute;h.v=0;}
    if(!s._mb)s._mb={ph:0,left:15+Math.floor(R()*26)};
    if(!s._yz)s._yz={on:0,t:0,dump:0};
    if(s.hist.length<2){s.hist.push({p:s.price,v:0,m:0});h=s.hist[s.hist.length-1]}
@@ -283,7 +278,6 @@
    align(s);
    keepSeal(s);
    if(s._sq>0){pr(s,s._sp,s._sq,s._sd);s._sq=0}
-   if(traded>0){s.vol+=traded/100;h.v=(h.v||0)+traded/100}
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);
