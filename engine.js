@@ -78,7 +78,6 @@ function stepMinute(){
   var us=1+0.30*Math.exp(-M.minute/30)+0.22*Math.exp(-(240-M.minute)/30);
   var bv=st.volBase*us*Math.exp(gauss()*0.32)*(0.55+Math.min(Math.abs(ret)*380,1.7));
   var v=Math.max(1,Math.round(bv));
-  st.vol+=v;st.amount+=v*st.price;
   st.hist.push({p:st.price,v:v,m:M.minute});
  }
  var sum=0;
@@ -102,11 +101,6 @@ function applyImpact(code,side,qtyShares,px){
  st.price=r2(np);st.lf=Math.log(st.price);
  if(st.price>st.high)st.high=st.price;
  if(st.price<st.low)st.low=st.price;
- st.vol+=Math.round(qtyShares/100);st.amount+=amt;
- var hv=Math.round(qtyShares/100);
- var last=st.hist[st.hist.length-1];
- if(last&&last.m===M.minute){last.p=st.price;last.v=(last.v||0)+hv}
- else{st.hist.push({p:st.price,v:hv,m:M.minute})}
  var spill=mag*0.18*(0.5+rnd());
  for(var i=0;i<M.stocks.length;i++){
   var o=M.stocks[i];
@@ -117,9 +111,6 @@ function applyImpact(code,side,qtyShares,px){
   o.price=r2(p2);o.lf=Math.log(o.price);
   if(o.price>o.high)o.high=o.price;
   if(o.price<o.low)o.low=o.price;
-  var lo=o.hist[o.hist.length-1];
-  if(lo&&lo.m===M.minute){lo.p=o.price}
-  else{o.hist.push({p:o.price,v:0,m:M.minute})}
  }
 }
 function closeDay(){
