@@ -1,4 +1,4 @@
-/* ob.js v41 —— 只补最优档，深层档位不乱跳 */
+/* ob.js v42 —— 盘口节奏放慢 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -97,9 +97,14 @@
    if(!s.book.asks.length||c2(s.book.asks[0].p)!==c2(s.dn)){window.buildBook(s);return}
    s.book.bids=[];s.book.asks[0].q=s._sealQty;
   }else{
-   var ob=s.book,cap=Math.round(baseQ(s)*8),add=baseQ(s)*0.006;
-   if(ob.asks.length){var la=ob.asks[0];la.q=Math.min(cap,la.q+Math.round(add*(0.2+R()*0.9)));if(la.q<100)la.q=100;}
-   if(ob.bids.length){var lb=ob.bids[0];lb.q=Math.min(cap,lb.q+Math.round(add*(0.2+R()*0.9)));if(lb.q<100)lb.q=100;}
+   var ob=s.book,cap=Math.round(baseQ(s)*8),add=baseQ(s)*0.0025;
+   if(R()<0.4){
+    if(ob.asks.length){var la=ob.asks[0];la.q=Math.max(100,la.q-Math.round(add*(0.2+R()*0.9)));}
+    if(ob.bids.length){var lb=ob.bids[0];lb.q=Math.max(100,lb.q-Math.round(add*(0.2+R()*0.9)));}
+   }else{
+    if(ob.asks.length){var la2=ob.asks[0];la2.q=Math.min(cap,la2.q+Math.round(add*(0.2+R()*0.9)));}
+    if(ob.bids.length){var lb2=ob.bids[0];lb2.q=Math.min(cap,lb2.q+Math.round(add*(0.2+R()*0.9)));}
+   }
   }
   s._ob=s.book;
  }
@@ -251,7 +256,7 @@
    else{midAmt+=mAmt;mAmt=0;}
    var aggr=(mAmt+hAmt+midAmt*0.5)*(s._pulse||1);
    var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
-   var q=Math.round(baseQ(s)*(dirK*0.03+(R()-0.5)*0.012)*(s._pulse||1)),traded=0;
+   var q=Math.round(baseQ(s)*(dirK*0.003+(R()-0.5)*0.0015)*(s._pulse||1)),traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    sealSync(s);
    if(s._seal===1&&R()<0.05){
