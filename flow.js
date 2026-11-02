@@ -1,4 +1,4 @@
-/* flow.js v35 —— 资金四线只由 ob 写 */
+/* flow.js v36 —— 量成簇 + 不再截成一样高 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -25,6 +25,7 @@
     s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._ga=[];
     s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;
     s._mhi=s.price;s._mlo=s.price;s._vt=Math.pow(R(),2.2);s._tp=[];
+    s._act=1;s._actc=0;s._actm=-1;
    }
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
@@ -36,8 +37,15 @@
     s._vt=Math.pow(R(),2.2);
    }
    var vb=s.volBase||1000;
+   if(s._actm!==M.minute){
+    s._actm=M.minute;
+    if(!s._actc||s._actc<=0){s._actc=3+Math.floor(R()*7);s._act=0.35+Math.pow(R(),1.7)*2.2;}
+    s._actc--;
+   }
    var amp=s._mlo>0?(s._mhi-s._mlo)/s._mlo:0;
-   var vMin=vb*(0.06+s._vt*(0.55+Math.min(amp*1100,3.2))*(0.75+R()*0.5));
+   var prof=1+1.15*Math.exp(-M.minute/22)+0.55*Math.exp(-(240-M.minute)/22);
+   var tail=Math.pow(R(),2.0);
+   var vMin=vb*prof*(0.06+s._act*tail*(0.5+Math.min(amp*900,2.6))*(0.7+R()*0.6));
    var vSec=vMin/60;
    if(vSec<0.2)vSec=0.2;
    var dir=(px>=(s._lp||px))?1:-1;
@@ -97,7 +105,7 @@
    }
   }
   var _va=ls.map(function(v){return v.v||0}).sort(function(a,b){return a-b});
-  var vmax=Math.max(1,_va[Math.floor(_va.length*0.96)]||1);
+  var vmax=Math.max(1,_va[Math.floor(_va.length*0.98)]||1);
   var bw=(Rr-L)/240*0.62;
   if(bw<1)bw=1;
   ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.62)':'rgba(0,208,156,.62)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
