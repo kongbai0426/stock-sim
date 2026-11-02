@@ -1,4 +1,4 @@
-/* flow.js v31 —— 量柱/明细/成交额同源，独立运行 */
+/* flow.js v35 —— 资金四线只由 ob 写 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -22,7 +22,7 @@
    var s=M.stocks[i];
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
-    s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._fl.hist=[];s._ga=[];
+    s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._ga=[];
     s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;
     s._mhi=s.price;s._mlo=s.price;s._vt=Math.pow(R(),2.2);s._tp=[];
    }
@@ -32,11 +32,6 @@
    if(px>s._mhi)s._mhi=px;
    if(px<s._mlo)s._mlo=px;
    if(s._vm2!==M.minute){
-    var mm=M.minute-1;if(mm<0)mm=0;
-    var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
-    s._fl.xl=F.xl;s._fl.l=F.l;s._fl.m=F.m;s._fl.s=F.s;
-    if(lt&&lt.t===mm){lt.xl=F.xl;lt.l=F.l;lt.m=F.m;lt.s=F.s}
-    else{H.push({t:mm,xl:F.xl,l:F.l,m:F.m,s:F.s});if(H.length>240)H.shift()}
     s._vm2=M.minute;s._macc=0;s._mhi=px;s._mlo=px;
     s._vt=Math.pow(R(),2.2);
    }
@@ -177,6 +172,7 @@
   x.fillStyle='#ff5252';x.fillText((last.xl/1e8).toFixed(2),w-1,Y(last.xl)+3);
   x.fillStyle='#00d09c';x.fillText((last.s/1e8).toFixed(2),w-1,Y(last.s)+3);
  }
+ window.__flowStep=acc;
  window.drawTrend=myTrend;
  setInterval(function(){if(window.drawTrend!==myTrend)window.drawTrend=myTrend},1000);
  var oldDr=window.dr;
