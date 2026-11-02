@@ -1,6 +1,6 @@
-/* layout.js v13 —— 版本号 AX20 · 双栏 · 封单可砸开 · 市场数据对账 */
+/* layout.js v14 —— 双栏 · 封单可砸开 · 市场数据对账 */
 (function(){
-  var VER='AX57';
+  var VER='AX58';
   function setTitle(){try{document.title='模拟股市 v8 M6 '+VER}catch(e){}}
   setTitle();setTimeout(setTitle,0);setTimeout(setTitle,600);
   setInterval(function(){if(document.title!=='模拟股市 v8 M6 '+VER)document.title='模拟股市 v8 M6 '+VER},1500);
@@ -22,51 +22,6 @@
   var dt=document.getElementById('dt');if(!dt)return;
   var cv=document.getElementById('cv'),tabs=dt.querySelector('.tabs2');
   if(!cv||!tabs)return;
-
-  function c2(x){return Math.round(x*100)}
-  function f2(c){return c/100}
-  function cl(s,p){return f2(Math.max(c2(s.dn),Math.min(c2(s.up),c2(p))))}
-  function addB(s,side,p,q){
-    p=cl(s,p);
-    var arr=side==='buy'?s.book.bids:s.book.asks,i;
-    for(i=0;i<arr.length;i++)if(c2(arr[i].p)===c2(p)){arr[i].q+=q;return}
-    arr.push({p:p,q:q});
-    arr.sort(side==='buy'?function(x,y){return y.p-x.p}:function(x,y){return x.p-y.p});
-  }
-  window.matchAll=function(){
-    for(var i=0;i<ACC.orders.length;i++){
-      var o=ACC.orders[i];
-      if(!o||o.status!=='pending')continue;
-      var s=getStock(o.code);if(!s||!s.book)continue;
-      var rem=o.qty-o.filled,take;
-      if(rem<=0)continue;
-      if(o.side==='buy'){
-        while(rem>0&&s.book.asks.length&&c2(s.book.asks[0].p)<=c2(o.price)){
-          var a=s.book.asks[0];take=Math.min(rem,a.q);a.q-=take;rem-=take;
-          fill(o,a.p,take);s.price=cl(s,a.p);
-          if(s._seal===-1&&c2(a.p)===c2(s.dn)){
-            s._sealQty=(s._sealQty||0)-take;
-            if(s._sealQty<=0){s._sealQty=0;s._seal=0;s.price=f2(c2(s.dn)+1)}
-          }
-          if(a.q<=0)s.book.asks.shift();
-          if(take<=0)break;
-        }
-        if(rem>0)addB(s,'buy',o.price,rem);
-      }else{
-        while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
-          var b=s.book.bids[0];take=Math.min(rem,b.q);b.q-=take;rem-=take;
-          fill(o,b.p,take);s.price=cl(s,b.p);
-          if(s._seal===1&&c2(b.p)===c2(s.up)){
-            s._sealQty=(s._sealQty||0)-take;
-            if(s._sealQty<=0){s._sealQty=0;s._seal=0;s.price=f2(c2(s.up)-1)}
-          }
-          if(b.q<=0)s.book.bids.shift();
-          if(take<=0)break;
-        }
-        if(rem>0)addB(s,'sell',o.price,rem);
-      }
-    }
-  };
 
   var css=document.createElement('style');
   css.textContent=
