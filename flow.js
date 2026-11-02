@@ -1,4 +1,4 @@
-/* flow.js v30 —— 量柱/明细/成交额同源，逐笔，柱间留缝 */
+/* flow.js v31 —— 量柱/明细/成交额同源，独立运行 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -181,13 +181,13 @@
  setInterval(function(){if(window.drawTrend!==myTrend)window.drawTrend=myTrend},1000);
  var oldDr=window.dr;
  window.dr=function(){
-  acc();
   if(oldDr)oldDr();
   var s=getStock(sel);
   if(!s)return;
   if(typeof mode==='undefined'||mode==='t')myTrend(s);
   drawFlow(s);
  };
+ setInterval(acc,1000);
  (function attach(){
   var c=document.getElementById('cv');if(!c||c.__cx)return;
   c.__cx=1;
