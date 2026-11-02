@@ -1,4 +1,4 @@
-/* ob.js v42 —— 盘口节奏放慢 */
+/* ob.js v43 —— 去掉价格锁死，成交能真正推价 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -164,7 +164,7 @@
      pr(s,a.p,take,1);
      if(a.q<=0){s.price=cl(s,a.p);s.book.asks.shift();}
     }
-    if(rem>0){addBook(s,'buy',o.price,rem);o._restQ=rem}
+    if(rem>0){addBook(s,'buy',Math.min(o.price,s.price),rem);o._restQ=rem}
    }else{
     while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
      var b=s.book.bids[0];take=Math.min(rem,b.q);b.q-=take;rem-=take;
@@ -173,7 +173,7 @@
      pr(s,b.p,take,-1);
      if(b.q<=0){s.price=cl(s,b.p);s.book.bids.shift();}
     }
-    if(rem>0){addBook(s,'sell',o.price,rem);o._restQ=rem}
+    if(rem>0){addBook(s,'sell',Math.max(o.price,s.price),rem);o._restQ=rem}
    }
   }
  };
@@ -207,12 +207,11 @@
    if(!s.book){window.buildBook(s);}
    if(s._flDay!==M.day){
     s._flDay=M.day;s._fl={xl:0,l:0,m:0,s:0,hist:[]};s._tp=[];
-    s._pb=[];s._ph=0;s._sq=0;s._px=null;s._vm=null;s._vk=1;s._dmp=0;
+    s._pb=[];s._ph=0;s._sq=0;s._vk=1;s._dmp=0;
     s._seal=0;s._sealQty=0;
     s._hot=(R()<0.03)?1:0;
     window.buildBook(s);
    }
-   if(s._px!=null){s.price=s._px;s.lf=Math.log(s.price);s.lfair=s.lf;}
    sealSync(s);
    var h=s.hist[s.hist.length-1];
    if(!h)continue;
@@ -278,7 +277,6 @@
    var lh=s._fl.hist[s._fl.hist.length-1];
    if(lh&&lh.t===M.minute){lh.xl=s._fl.xl;lh.l=s._fl.l;lh.m=s._fl.m;lh.s=s._fl.s}
    else{s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
-   s._px=s.price;
   }
  }
  function run(){
