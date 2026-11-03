@@ -1,4 +1,4 @@
-/* flow.js v36 —— 量成簇 + 不再截成一样高 */
+/* flow.js v37 —— 量跟当分钟涨跌幅挂钩 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -24,8 +24,7 @@
    if(s._fd!==M.day){
     s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._ga=[];
     s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;
-    s._mhi=s.price;s._mlo=s.price;s._vt=Math.pow(R(),2.2);s._tp=[];
-    s._act=1;s._actc=0;s._actm=-1;
+    s._mhi=s.price;s._mlo=s.price;s._tp=[];
    }
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
@@ -34,21 +33,16 @@
    if(px<s._mlo)s._mlo=px;
    if(s._vm2!==M.minute){
     s._vm2=M.minute;s._macc=0;s._mhi=px;s._mlo=px;
-    s._vt=Math.pow(R(),2.2);
    }
    var vb=s.volBase||1000;
-   if(s._actm!==M.minute){
-    s._actm=M.minute;
-    if(!s._actc||s._actc<=0){s._actc=3+Math.floor(R()*7);s._act=0.35+Math.pow(R(),1.7)*2.2;}
-    s._actc--;
-   }
-   var amp=s._mlo>0?(s._mhi-s._mlo)/s._mlo:0;
    var prof=1+1.15*Math.exp(-M.minute/22)+0.55*Math.exp(-(240-M.minute)/22);
+   var prev=s._lp||px;
+   var chg=prev?Math.abs(px-prev)/prev:0;
    var tail=Math.pow(R(),2.0);
-   var vMin=vb*prof*(0.06+s._act*tail*(0.5+Math.min(amp*900,2.6))*(0.7+R()*0.6));
+   var vMin=vb*prof*(0.04+Math.min(chg*900,7)+tail*0.3);
    var vSec=vMin/60;
    if(vSec<0.2)vSec=0.2;
-   var dir=(px>=(s._lp||px))?1:-1;
+   var dir=(px>=prev)?1:-1;
    s._macc+=vSec;
    s._vv+=vSec;
    s._va+=vSec*100*px;
