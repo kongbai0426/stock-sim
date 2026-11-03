@@ -1,4 +1,4 @@
-/* ob.js v49 —— 读取用户订单流，量从撮合出 */
+/* ob.js v50 —— 吃穿五档后继续吃深档 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -115,10 +115,15 @@
  }
  function sweep(s,dir,qty){
   var ob=s.book,left=qty,traded=0,a,take,n=0;
-  while(left>0&&n++<200){
+  while(left>0&&n++<400){
    if(dir>0){
     if(s._seal===1){s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
-    if(!ob.asks.length)break;
+    if(c2(s.price)>=c2(s.up)){s._seal=1;s.price=s.up;s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
+    if(!ob.asks.length){
+     var np=f2(Math.min(c2(s.up),c2(s.price)+1));
+     if(c2(np)<=c2(s.price)){s._seal=1;s.price=s.up;s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
+     ob.asks.push({p:np,q:Math.round(baseQ(s)*(0.35+R()*0.45))});
+    }
     a=ob.asks[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;
     if(a.q<=0){s.price=cl(s,a.p);ob.asks.shift();}
@@ -128,7 +133,12 @@
     }
    }else{
     if(s._seal===-1){s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
-    if(!ob.bids.length)break;
+    if(c2(s.price)<=c2(s.dn)){s._seal=-1;s.price=s.dn;s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
+    if(!ob.bids.length){
+     var np2=f2(Math.max(c2(s.dn),c2(s.price)-1));
+     if(c2(np2)>=c2(s.price)){s._seal=-1;s.price=s.dn;s._sealQty=Math.min((s._sealQty||0)+left,capQ(s));left=0;break}
+     ob.bids.push({p:np2,q:Math.round(baseQ(s)*(0.35+R()*0.45))});
+    }
     a=ob.bids[0];take=Math.min(left,a.q);
     a.q-=take;left-=take;traded+=take;
     if(a.q<=0){s.price=cl(s,a.p);ob.bids.shift();}
@@ -161,13 +171,11 @@
      fill(o,a.p,take);pr(s,a.p,take,1);
      if(a.q<=0){s.price=cl(s,a.p);s.book.asks.shift();}
     }
-    if(rem>0){
-     if(!s.book.asks.length&&c2(o.price)>=c2(s.up)){
-      s._seal=1;s._sealQty=Math.min((s._sealQty||0)+rem,capQ(s));s.price=s.up;
-     }else{
-      addBook(s,'buy',Math.min(o.price,s.price),rem);
-     }
+    if(rem>0&&c2(o.price)>=c2(s.up)){
+     s._seal=1;s._sealQty=Math.min((s._sealQty||0)+rem,capQ(s));s.price=s.up;
      o._restQ=rem;
+    }else if(rem>0){
+     addBook(s,'buy',Math.min(o.price,s.price),rem);o._restQ=rem;
     }
    }else{
     while(rem>0&&s.book.bids.length&&c2(s.book.bids[0].p)>=c2(o.price)){
@@ -175,13 +183,11 @@
      fill(o,b.p,take);pr(s,b.p,take,-1);
      if(b.q<=0){s.price=cl(s,b.p);s.book.bids.shift();}
     }
-    if(rem>0){
-     if(!s.book.bids.length&&c2(o.price)<=c2(s.dn)){
-      s._seal=-1;s._sealQty=Math.min((s._sealQty||0)+rem,capQ(s));s.price=s.dn;
-     }else{
-      addBook(s,'sell',Math.max(o.price,s.price),rem);
-     }
+    if(rem>0&&c2(o.price)<=c2(s.dn)){
+     s._seal=-1;s._sealQty=Math.min((s._sealQty||0)+rem,capQ(s));s.price=s.dn;
      o._restQ=rem;
+    }else if(rem>0){
+     addBook(s,'sell',Math.max(o.price,s.price),rem);o._restQ=rem;
     }
    }
   }
@@ -283,10 +289,8 @@
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);
    h.p=s.price;
-   s._fl.xl+=0;s._fl.l+=0;s._fl.m+=0;s._fl.s+=0;
    var lh=s._fl.hist[s._fl.hist.length-1];
-   if(lh&&lh.t===M.minute){}
-   else{s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
+   if(!(lh&&lh.t===M.minute)){s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
   }
   if(window.UQ&&window.UQ.clear)window.UQ.clear();
  }
