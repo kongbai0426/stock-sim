@@ -1,4 +1,4 @@
-/* flow.js v38 —— 量按"分钟累计涨跌幅" */
+/* flow.js v39 —— 涨幅因子 + 压低随机 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -39,8 +39,9 @@
    var prof=1+1.15*Math.exp(-M.minute/22)+0.55*Math.exp(-(240-M.minute)/22);
    var mprev=s._mprev||px;
    var chg=mprev?Math.abs(px-mprev)/mprev:0;
+   var dc=s.prev?Math.abs(px/s.prev-1):0;
    var tail=Math.pow(R(),2.0);
-   var vMin=vb*prof*(0.04+Math.min(chg*900,7)+tail*0.3);
+   var vMin=vb*prof*(0.05+dc*6+Math.min(chg*700,6)+tail*0.12);
    var vSec=vMin/60;
    if(vSec<0.2)vSec=0.2;
    var dir=(px>=mprev)?1:-1;
