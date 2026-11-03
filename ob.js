@@ -1,4 +1,4 @@
-/* ob.js v48 —— 盘口封顶，不再滚成天文数字 */
+/* ob.js v49 —— 读取用户订单流，量从撮合出 */
 (function(){
  var BS=1;
  function R(){return Math.random()}
@@ -210,6 +210,9 @@
  function flowTick(){
   if(M.phase!=='open')return;
   themeTick();
+  var UB=(window.UQ&&window.UQ.b)?window.UQ.b:null;
+  var US=(window.UQ&&window.UQ.s)?window.UQ.s:null;
+  var UQK=window.__UQK||0.02;
   for(var i=0;i<M.stocks.length;i++){
    var s=M.stocks[i];
    limit(s);
@@ -219,6 +222,7 @@
     s._pb=[];s._ph=0;s._sq=0;s._vk=1;s._dmp=0;
     s._seal=0;s._sealQty=0;
     s._hot=(R()<0.03)?1:0;
+    s.vol=0;s.amount=0;
     window.buildBook(s);
    }
    sealSync(s);
@@ -252,18 +256,12 @@
    if(s._jpt>0){dirK+=s._jd*s._jm;}
    if(dirK>1.5)dirK=1.5;
    if(dirK<-1.5)dirK=-1.5;
-   var yzB=yz.on?1:0;
-   var base=flowQ(s)*vkP*(0.75+0.25*(s._vk||1));
-   var amt=base*s.price/TK;
-   var mAmt=amt*(0.05+R()*0.10)*dirK;
-   var hAmt=0;
-   var midAmt=amt*(0.12+R()*0.20)*(R()<0.5?1:-1);
-   var xlP=0;
-   if(P===3||yzB){xlP=mAmt*0.4;mAmt=mAmt*0.6;}
-   else{midAmt+=mAmt;mAmt=0;}
-   var aggr=(mAmt+hAmt+midAmt*0.5)*(s._pulse||1);
-   var rAmt=-(aggr+midAmt)*(0.85+R()*0.45);
-   var q=Math.round(baseQ(s)*(dirK*0.003+(R()-0.5)*0.0015)*(s._pulse||1)),traded=0;
+   var q=Math.round(baseQ(s)*(dirK*0.003+(R()-0.5)*0.0015)*(s._pulse||1));
+   if(UB){
+    var uq=((UB[i]||0)-(US[i]||0))*UQK;
+    q+=Math.round(uq);
+   }
+   var traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
    sealSync(s);
    if(s._seal===1&&R()<0.05){
@@ -276,15 +274,21 @@
    align(s);
    keepSeal(s);
    if(s._sq>0){pr(s,s._sp,s._sq,s._sd);s._sq=0}
+   if(traded>0){
+    s.vol=(s.vol||0)+traded/100;
+    s.amount=(s.amount||0)+traded*s.price;
+    h.v=(h.v||0)+traded/100;
+   }
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
    s.lf=Math.log(s.price);
    h.p=s.price;
-   s._fl.xl+=xlP;s._fl.l+=mAmt+hAmt;s._fl.m+=midAmt;s._fl.s+=rAmt;
+   s._fl.xl+=0;s._fl.l+=0;s._fl.m+=0;s._fl.s+=0;
    var lh=s._fl.hist[s._fl.hist.length-1];
-   if(lh&&lh.t===M.minute){lh.xl=s._fl.xl;lh.l=s._fl.l;lh.m=s._fl.m;lh.s=s._fl.s}
+   if(lh&&lh.t===M.minute){}
    else{s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
   }
+  if(window.UQ&&window.UQ.clear)window.UQ.clear();
  }
  function run(){
   if(M._obMin===M.minute)return;
