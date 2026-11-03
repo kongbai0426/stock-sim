@@ -1,4 +1,4 @@
-/* flow.js v37 —— 量跟当分钟涨跌幅挂钩 */
+/* flow.js v38 —— 量按"分钟累计涨跌幅" */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -23,7 +23,7 @@
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
     s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._ga=[];
-    s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;
+    s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;s._mprev=s.price;
     s._mhi=s.price;s._mlo=s.price;s._tp=[];
    }
    var h=s.hist&&s.hist[s.hist.length-1];
@@ -32,17 +32,18 @@
    if(px>s._mhi)s._mhi=px;
    if(px<s._mlo)s._mlo=px;
    if(s._vm2!==M.minute){
+    s._mprev=s._lp||px;
     s._vm2=M.minute;s._macc=0;s._mhi=px;s._mlo=px;
    }
    var vb=s.volBase||1000;
    var prof=1+1.15*Math.exp(-M.minute/22)+0.55*Math.exp(-(240-M.minute)/22);
-   var prev=s._lp||px;
-   var chg=prev?Math.abs(px-prev)/prev:0;
+   var mprev=s._mprev||px;
+   var chg=mprev?Math.abs(px-mprev)/mprev:0;
    var tail=Math.pow(R(),2.0);
    var vMin=vb*prof*(0.04+Math.min(chg*900,7)+tail*0.3);
    var vSec=vMin/60;
    if(vSec<0.2)vSec=0.2;
-   var dir=(px>=prev)?1:-1;
+   var dir=(px>=mprev)?1:-1;
    s._macc+=vSec;
    s._vv+=vSec;
    s._va+=vSec*100*px;
