@@ -1,4 +1,4 @@
-/* flow.js v39 —— 涨幅因子 + 压低随机 */
+/* flow.js v41 —— 资金四线交给 ob，自己不再写 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -22,43 +22,21 @@
    var s=M.stocks[i];
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
-    s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._ga=[];
-    s._vv=0;s._va=0;s._vm2=-1;s._macc=0;s._lp=s.price;s._mprev=s.price;
-    s._mhi=s.price;s._mlo=s.price;s._tp=[];
+    s._fd=M.day;s._ga=[];s._tp=[];s._vm2=-1;
    }
+   if(s._vm2===M.minute)continue;
+   s._vm2=M.minute;
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
-   var px=s.price||1;
-   if(px>s._mhi)s._mhi=px;
-   if(px<s._mlo)s._mlo=px;
-   if(s._vm2!==M.minute){
-    s._mprev=s._lp||px;
-    s._vm2=M.minute;s._macc=0;s._mhi=px;s._mlo=px;
-   }
-   var vb=s.volBase||1000;
-   var prof=1+1.15*Math.exp(-M.minute/22)+0.55*Math.exp(-(240-M.minute)/22);
-   var mprev=s._mprev||px;
-   var chg=mprev?Math.abs(px-mprev)/mprev:0;
-   var dc=s.prev?Math.abs(px/s.prev-1):0;
-   var tail=Math.pow(R(),2.0);
-   var vMin=vb*prof*(0.05+dc*6+Math.min(chg*700,6)+tail*0.12);
-   var vSec=vMin/60;
-   if(vSec<0.2)vSec=0.2;
-   var dir=(px>=mprev)?1:-1;
-   s._macc+=vSec;
-   s._vv+=vSec;
-   s._va+=vSec*100*px;
-   h.v=Math.max(1,Math.round(s._macc));
-   s.vol=Math.round(s._vv);
-   s.amount=Math.round(s._va);
-   s._lp=px;
-   if(s.code===sel){
-    var n=1+(R()<0.55?1:0)+(R()<0.18?1:0);
-    var per=Math.max(1,Math.round(vSec*100/n));
+   var v=h.v||0;
+   if(s.code===sel&&v>0){
+    var px=s.price||1;
+    var dir=(px>=(s.prev||px))?1:-1;
+    var n=1+(R()<0.60?1:0)+(R()<0.20?1:0);
+    var per=Math.max(1,Math.round(v/n));
     for(var k=0;k<n;k++){
-     var qq=Math.max(1,Math.round(per/100));
+     var qq=Math.max(1,Math.round(per));
      pushT(s,Math.round(px*100)/100,qq,dir,M.minute);
-     s._fx[bk(qq*100*px)]+=dir*(qq*100*px);
     }
    }
   }
