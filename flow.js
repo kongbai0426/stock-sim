@@ -1,4 +1,4 @@
-/* flow.js v42 —— 明细长尾分布 */
+/* flow.js v43 —— 明细强制整数手 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -9,8 +9,6 @@
   f.style.cssText='display:block;width:100%;height:104px;margin-top:2px';
   cv0.parentNode.insertBefore(f,cv0.nextSibling);
  }
- var BK=[1000000,200000,40000,0],KF=['xl','l','m','s'];
- function bk(a){for(var i=0;i<4;i++)if(a>=BK[i])return KF[i];return 's'}
  function pushT(s,px,q,dir,m0){
   if(!s._tp)s._tp=[];
   s._tp.unshift({m:m0,p:px,q:q,d:dir,a:q*100*px});
@@ -33,6 +31,7 @@
     var px=s.price||1;
     var dir=(px>=(s.prev||px))?1:-1;
     var n=4+Math.floor(R()*14);
+    if(n>v)n=v;
     var ws=[],sum=0,j;
     for(j=0;j<n;j++){var w=Math.pow(R(),2.5)+0.03;ws.push(w);sum+=w;}
     var acc2=0;
@@ -40,10 +39,10 @@
      var q;
      if(j===n-1)q=Math.max(1,v-acc2);
      else q=Math.max(1,Math.round(v*ws[j]/sum));
+     if(acc2+q>v)q=Math.max(1,v-acc2);
      if(q<1)q=1;
-     if(acc2+q>v&&j<n-1)q=Math.max(1,v-acc2);
      acc2+=q;
-     if(acc2>v)break;
+     if(acc2>v+1)break;
      pushT(s,Math.round(px*100)/100,q,dir,M.minute);
     }
    }
@@ -88,7 +87,7 @@
   }
   var _va=ls.map(function(v){return v.v||0}).sort(function(a,b){return a-b});
   var vmax=Math.max(1,_va[Math.floor(_va.length*0.98)]||1);
-  var bw=(Rr-L)/240*0.62;
+  var bw=(Rr-L)/240*0.45;
   if(bw<1)bw=1;
   ls.forEach(function(v,i){x.fillStyle=(v.p>=(i?ls[i-1].p:pre))?'rgba(255,82,82,.62)':'rgba(0,208,156,.62)';var vh=Math.min(v.v,vmax)/vmax*VH;x.fillRect(X(i)-bw/2,VY+VH-vh,bw,Math.max(1,vh))});
   var sp=0,sv=0,avg=[];
