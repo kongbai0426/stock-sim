@@ -1,4 +1,4 @@
-/* ob.js v53 —— 关键位挂厚单，替代暗力 */
+/* ob.js v54 —— 成交分档累加资金四线 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -82,6 +82,14 @@
   if(c2(s.price)>=c2(s.up)){s._seal=1;s.price=s.up;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
   else if(c2(s.price)<=c2(s.dn)){s._seal=-1;s.price=s.dn;if(!s._sealQty)s._sealQty=Math.round(baseQ(s)*(4+R()*10))}
  }
+ function addFlow(s,amt,dir){
+  if(!s._fl){s._fl={xl:0,l:0,m:0,s:0,hist:[]}}
+  var a=amt*dir;
+  if(amt>=1000000)s._fl.xl+=a;
+  else if(amt>=200000)s._fl.l+=a;
+  else if(amt>=40000)s._fl.m+=a;
+  else s._fl.s+=a;
+ }
  function sweep(s,dir,qty){
   var d=s._dq,left=qty,traded=0,n=0;
   if(dir>0){
@@ -93,6 +101,7 @@
     if(v>0){ci++;continue}
     var av=-v,take=Math.min(left,av);
     d[ci+1]=(v+take);left-=take;traded+=take;
+    addFlow(s,take*f2(s._d0+ci+1),1);
     if(d[ci+1]>=0){d[ci+1]=0;s.price=f2(s._d0+ci+1);ci++;norm(s);}
    }
   }else{
@@ -104,6 +113,7 @@
     if(v2<0){ci2--;continue}
     var av2=v2,take2=Math.min(left,av2);
     d[ci2-1]=(v2-take2);left-=take2;traded+=take2;
+    addFlow(s,take2*f2(s._d0+ci2-1),-1);
     if(d[ci2-1]<=0){d[ci2-1]=0;s.price=f2(s._d0+ci2-1);ci2--;norm(s);}
    }
   }
@@ -144,6 +154,7 @@
      var av=-v;take=Math.min(rem,av);
      s._dq[ci+1]=(v+take);rem-=take;
      fill(o,f2(s._d0+ci+1),take);pr(s,f2(s._d0+ci+1),take,1);
+     addFlow(s,take*f2(s._d0+ci+1),1);
      if(s._dq[ci+1]>=0){s._dq[ci+1]=0;s.price=f2(s._d0+ci+1);norm(s);}
     }
     if(rem>0){
@@ -161,6 +172,7 @@
      take=Math.min(rem,v2);
      s._dq[ci2-1]=(v2-take);rem-=take;
      fill(o,f2(s._d0+ci2-1),take);pr(s,f2(s._d0+ci2-1),take,-1);
+     addFlow(s,take*f2(s._d0+ci2-1),-1);
      if(s._dq[ci2-1]<=0){s._dq[ci2-1]=0;s.price=f2(s._d0+ci2-1);norm(s);}
     }
     if(rem>0){
@@ -255,6 +267,7 @@
    s.lf=Math.log(s.price);h.p=s.price;
    var lh=s._fl.hist[s._fl.hist.length-1];
    if(!(lh&&lh.t===M.minute)){s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
+   else{lh.xl=s._fl.xl;lh.l=s._fl.l;lh.m=s._fl.m;lh.s=s._fl.s}
   }
   if(window.UQ&&window.UQ.clear)window.UQ.clear();
  }
