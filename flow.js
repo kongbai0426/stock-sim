@@ -1,4 +1,4 @@
-/* flow.js v42 —— 明细长尾分布 */
+/* flow.js v44 —— 明细严格整数手 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -11,10 +11,38 @@
  }
  var BK=[1000000,200000,40000,0],KF=['xl','l','m','s'];
  function bk(a){for(var i=0;i<4;i++)if(a>=BK[i])return KF[i];return 's'}
- function pushT(s,px,q,dir,m0){
-  if(!s._tp)s._tp=[];
-  s._tp.unshift({m:m0,p:px,q:q,d:dir,a:q*100*px});
-  if(s._tp.length>60)s._tp.length=60;
+ function gen(s,mt,d,m0){
+  var px=s.price||1,tot=mt*100*px,tt=tier(s),avg=(tt[0]+tt[1])/2;
+  var n=Math.round(tot/avg);if(n<3)n=3;if(n>12)n=12;
+  var ws=[],sum=0,i;
+  for(i=0;i<n;i++){var w=0.55+R()*0.9;ws.push(w);sum+=w}
+  var total=Math.round(mt*100/100)*100,left=total,arr=[];
+  for(i=0;i<n;i++){
+   var sh=Math.round(total*ws[i]/sum/100)*100;
+   if(i===n-1)sh=left;
+   if(sh>left)sh=left;
+   if(sh<=0)continue;
+   left-=sh;
+   var p=Math.round((px+(R()-0.5)*0.02)*100)/100;
+   arr.push({m:m0,p:p,q:Math.round(sh/100),d:d,a:sh*p,_g:1});
+  }
+  if(!arr.length)return;
+  arr.reverse();
+  s._ga=arr.concat(s._ga||[]);
+  if(s._ga.length>40)s._ga.length=40;
+  s._tp=s._ga.slice();
+  for(i=0;i<arr.length;i++)s._fx[bk(arr[i].a)]+=d*arr[i].a;
+ }
+ function tier(s){
+  var cap=(s.price||0)*(s.floatShares||s.shares||10),lo,hi;
+  if(cap>=1000){lo=50000;hi=400000}
+  else if(cap>=200){lo=20000;hi=150000}
+  else if(cap>=50){lo=8000;hi=50000}
+  else{lo=3000;hi=20000}
+  var mn=(s.price||0)*100;
+  if(lo<mn)lo=mn;
+  if(hi<lo*1.5)hi=lo*1.8;
+  return [lo,hi];
  }
  function acc(){
   if(typeof M==='undefined'||M.phase!=='open')return;
@@ -22,31 +50,38 @@
    var s=M.stocks[i];
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
-    s._fd=M.day;s._ga=[];s._tp=[];s._vm2=-1;
+    s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._fl.hist=[];s._ga=[];
+    s._vv=0;s._va=0;s._vcur=0;s._vm2=-1;s._vp=s.price;
+    s._mhi=s.price;s._mlo=s.price;
    }
-   if(s._vm2===M.minute)continue;
-   s._vm2=M.minute;
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
-   var v=Math.round(h.v||0);
-   if(s.code===sel&&v>0){
-    var px=s.price||1;
-    var dir=(px>=(s.prev||px))?1:-1;
-    var n=4+Math.floor(R()*14);
-    var ws=[],sum=0,j;
-    for(j=0;j<n;j++){var w=Math.pow(R(),2.5)+0.03;ws.push(w);sum+=w;}
-    var acc2=0;
-    for(j=0;j<n;j++){
-     var q;
-     if(j===n-1)q=Math.max(1,v-acc2);
-     else q=Math.max(1,Math.round(v*ws[j]/sum));
-     if(q<1)q=1;
-     if(acc2+q>v&&j<n-1)q=Math.max(1,v-acc2);
-     acc2+=q;
-     if(acc2>v)break;
-     pushT(s,Math.round(px*100)/100,q,dir,M.minute);
+   var px=s.price||1;
+   if(s._vm2!==M.minute){
+    var Vp=s._vcur||0;
+    var mm=M.minute-1;if(mm<0)mm=0;
+    if(Vp>0){
+     var dd=(px>=(s._vp||px))?1:-1;
+     gen(s,Vp,dd,mm);
+     var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
+     s._fl.xl=F.xl;s._fl.l=F.l;s._fl.m=F.m;s._fl.s=F.s;
+     if(lt&&lt.t===mm){lt.xl=F.xl;lt.l=F.l;lt.m=F.m;lt.s=F.s}
+     else{H.push({t:mm,xl:F.xl,l:F.l,m:F.m,s:F.s});if(H.length>240)H.shift()}
     }
+    s._vp=px;s._vm2=M.minute;s._vcur=0;s._mhi=px;s._mlo=px;
    }
+   if(px>s._mhi)s._mhi=px;
+   if(px<s._mlo)s._mlo=px;
+   var vb=s.volBase||1000;
+   var amp=s._mlo>0?(s._mhi-s._mlo)/s._mlo:0;
+   var vNow=Math.round(vb*(0.06+Math.min(amp*1100,3.2))*(0.85+R()*0.3));
+   var lo2=Math.round(vb*0.05),hi2=Math.round(vb*4.0);
+   if(vNow<lo2)vNow=lo2;
+   if(vNow>hi2)vNow=hi2;
+   var dv=vNow-(s._vcur||0);
+   if(dv>0){s._vv+=dv;s._va+=dv*100*px;s._vcur=vNow;}
+   h.v=vNow;
+   s.vol=s._vv;s.amount=s._va;
   }
  }
  function myTrend(s){
