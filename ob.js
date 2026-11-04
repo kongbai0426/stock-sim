@@ -1,4 +1,4 @@
-/* ob.js v55 —— 撮合量放大，价格靠买盘推 */
+/* ob.js v56 —— 撮合量放大 5 倍 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -243,7 +243,7 @@
    }
    if(s._jpt>0){dirK+=s._jd*s._jm;}
    if(dirK>1.5)dirK=1.5;if(dirK<-1.5)dirK=-1.5;
-   var q=Math.round(baseQ(s)*(dirK*0.02+(R()-0.5)*0.006)*(s._pulse||1));
+   var q=Math.round(baseQ(s)*(dirK*0.1+(R()-0.5)*0.02)*(s._pulse||1));
    if(UB){q+=Math.round(((UB[i]||0)-(US[i]||0))*UQK);}
    var traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
