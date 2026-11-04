@@ -189,7 +189,7 @@ _start();
  var b=document.createElement('button');
  b.id='btnSpeed';b.textContent='1x';b.style.flex='0 0 52px';
  ctrl.appendChild(b);
- var list=[1,2,5,10,20];
+ var list=[1,2,5,10,20,50];
  var menu=document.createElement('div');
  menu.style.cssText='position:fixed;z-index:999;background:#1a2432;border:1px solid #2a3644;border-radius:8px;padding:4px;display:none;box-shadow:0 6px 16px rgba(0,0,0,.55)';
  var html='';
