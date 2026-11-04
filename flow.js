@@ -1,4 +1,4 @@
-/* flow.js v45 —— 资金四线只由 ob 写 */
+/* flow.js v44 —— 明细严格整数手 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -31,6 +31,7 @@
   s._ga=arr.concat(s._ga||[]);
   if(s._ga.length>40)s._ga.length=40;
   s._tp=s._ga.slice();
+  for(i=0;i<arr.length;i++)s._fx[bk(arr[i].a)]+=d*arr[i].a;
  }
  function tier(s){
   var cap=(s.price||0)*(s.floatShares||s.shares||10),lo,hi;
@@ -49,7 +50,7 @@
    var s=M.stocks[i];
    if(!s._fl)s._fl={xl:0,l:0,m:0,s:0,hist:[]};
    if(s._fd!==M.day){
-    s._fd=M.day;s._fl.hist=[];s._ga=[];
+    s._fd=M.day;s._fx={xl:0,l:0,m:0,s:0};s._fl.hist=[];s._ga=[];
     s._vv=0;s._va=0;s._vcur=0;s._vm2=-1;s._vp=s.price;
     s._mhi=s.price;s._mlo=s.price;
    }
@@ -62,6 +63,10 @@
     if(Vp>0){
      var dd=(px>=(s._vp||px))?1:-1;
      gen(s,Vp,dd,mm);
+     var F=s._fx,H=s._fl.hist,lt=H[H.length-1];
+     s._fl.xl=F.xl;s._fl.l=F.l;s._fl.m=F.m;s._fl.s=F.s;
+     if(lt&&lt.t===mm){lt.xl=F.xl;lt.l=F.l;lt.m=F.m;lt.s=F.s}
+     else{H.push({t:mm,xl:F.xl,l:F.l,m:F.m,s:F.s});if(H.length>240)H.shift()}
     }
     s._vp=px;s._vm2=M.minute;s._vcur=0;s._mhi=px;s._mlo=px;
    }
