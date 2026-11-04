@@ -1,4 +1,4 @@
-/* flow.js v41 —— 资金四线交给 ob，自己不再写 */
+/* flow.js v42 —— 明细长尾分布 */
 (function(){
  function R(){return Math.random()}
  var cx=-1;
@@ -28,15 +28,23 @@
    s._vm2=M.minute;
    var h=s.hist&&s.hist[s.hist.length-1];
    if(!h)continue;
-   var v=h.v||0;
+   var v=Math.round(h.v||0);
    if(s.code===sel&&v>0){
     var px=s.price||1;
     var dir=(px>=(s.prev||px))?1:-1;
-    var n=1+(R()<0.60?1:0)+(R()<0.20?1:0);
-    var per=Math.max(1,Math.round(v/n));
-    for(var k=0;k<n;k++){
-     var qq=Math.max(1,Math.round(per));
-     pushT(s,Math.round(px*100)/100,qq,dir,M.minute);
+    var n=4+Math.floor(R()*14);
+    var ws=[],sum=0,j;
+    for(j=0;j<n;j++){var w=Math.pow(R(),2.5)+0.03;ws.push(w);sum+=w;}
+    var acc2=0;
+    for(j=0;j<n;j++){
+     var q;
+     if(j===n-1)q=Math.max(1,v-acc2);
+     else q=Math.max(1,Math.round(v*ws[j]/sum));
+     if(q<1)q=1;
+     if(acc2+q>v&&j<n-1)q=Math.max(1,v-acc2);
+     acc2+=q;
+     if(acc2>v)break;
+     pushT(s,Math.round(px*100)/100,q,dir,M.minute);
     }
    }
   }
