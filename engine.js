@@ -1,6 +1,6 @@
-// 市场引擎 v9：价格交给撮合，这里只管时间
+// 市场引擎 v8：更稳的随机数 + 公允价带锚 + 波动率对齐历史
 var M={stocks:[],day:1,minute:0,phase:'open',index:1000,base:0,news:[],tick:0,seed:20261027,mood:0,secMood:[]};
-var ENGINE_VER='v9';
+var ENGINE_VER='v8';
 var DAILY_VOL=[0.010,0.020,0.030,0.032,0.025,0.022,0.026,0.030,0.020,0.032,0.020,0.025];
 var TURNOVER=[0.003,0.008,0.025,0.030,0.020,0.012,0.020,0.025,0.012,0.030,0.010,0.015];
 function rnd(){
@@ -29,7 +29,7 @@ function initMarket(){
   st.anchor=st.lf;
   return st;
  });
- for(var k=0;k<M.stocks.length;k++){M.stocks[k].hist=[{p:M.stocks[k].price,v:0,m:0}]}
+ for(var k=0;k<M.stocks.length;k++){buildBook(M.stocks[k]);M.stocks[k].hist=[{p:M.stocks[k].price,v:0,m:0}]}
  M.base=M.stocks.reduce(function(s,x){return s+x.prev*x.shares},0);
  M.index=1000;M.day=1;M.minute=0;M.phase='open';M.news=[];M.tick=0;
  document.title='模拟股市 '+ENGINE_VER;
@@ -48,6 +48,14 @@ function genHistory(st,price){
  st.price=r2(cl[119]);st.prev=st.price;st.open=st.price;st.high=st.price;st.low=st.price;
  st.up=r2(st.price*1.1);st.dn=r2(st.price*0.9);
 }
+function buildBook(st){
+ var sp=Math.max(0.01,+(st.price*0.0006).toFixed(2)),b=[],a=[];
+ for(var i=0;i<5;i++){
+  b.push({p:r2(st.price-sp*(i+1)),q:100*Math.round(2+rnd()*20)});
+  a.push({p:r2(st.price+sp*(i+1)),q:100*Math.round(2+rnd()*20)});
+ }
+ st.book={bids:b,asks:a};
+}
 function stepMinute(){
  if(M.phase!=='open')return;
  M.minute++;M.tick++;
@@ -56,7 +64,21 @@ function stepMinute(){
  for(var i=0;i<M.secMood.length;i++)M.secMood[i]=M.secMood[i]*0.93+gauss()*0.025;
  for(var k=0;k<M.stocks.length;k++){
   var st=M.stocks[k];
-  st.hist.push({p:st.price,v:0,m:M.minute});
+  st.lfair+=-0.002*(st.lfair-st.anchor)+M.mood*0.0002+M.secMood[st.si]*0.0004+0.0012*gauss();
+  var dev=st.lf-st.lfair;
+  var ret=-0.004*dev+0.0022*(M.kvol||1)*gauss();
+  if(rnd()<0.001)ret+=(rnd()<0.5?-1:1)*0.012;
+  st.lf+=ret;
+  var np=Math.exp(st.lf);
+  np=Math.min(st.up,Math.max(st.dn,np));
+  st.price=r2(np);
+  st.lf=Math.log(st.price);
+  if(st.price>st.high)st.high=st.price;
+  if(st.price<st.low)st.low=st.price;
+  var us=1+0.30*Math.exp(-M.minute/30)+0.22*Math.exp(-(240-M.minute)/30);
+  var bv=st.volBase*us*Math.exp(gauss()*0.32)*(0.55+Math.min(Math.abs(ret)*380,1.7));
+  var v=Math.max(1,Math.round(bv));
+  st.hist.push({p:st.price,v:v,m:M.minute});
  }
  var sum=0;
  for(var j=0;j<M.stocks.length;j++)sum+=M.stocks[j].price*M.stocks[j].shares;
@@ -65,6 +87,31 @@ function stepMinute(){
 }
 function applyImpact(code,side,qtyShares,px){
  var st=getStock(code);if(!st)return;
+ var amt=px*qtyShares;
+ var floatCap=st.price*st.floatShares*1e8;
+ var adv=Math.max(1e7,floatCap*TURNOVER[st.si]);
+ var ratio=amt/adv;
+ var mag=DAILY_VOL[st.si]*0.7*Math.sqrt(ratio);
+ if(mag>0.085)mag=0.085;
+ var dir=side==='buy'?1:-1;
+ var move=dir*mag*(0.8+0.4*rnd());
+ st.lfair+=move*0.3;
+ st.lf+=move;
+ var np=Math.min(st.up,Math.max(st.dn,Math.exp(st.lf)));
+ st.price=r2(np);st.lf=Math.log(st.price);
+ if(st.price>st.high)st.high=st.price;
+ if(st.price<st.low)st.low=st.price;
+ var spill=mag*0.18*(0.5+rnd());
+ for(var i=0;i<M.stocks.length;i++){
+  var o=M.stocks[i];
+  if(o===st||o.si!==st.si)continue;
+  var m2=dir*spill*(0.6+0.6*rnd());
+  o.lfair+=m2*0.3;o.lf+=m2;
+  var p2=Math.min(o.up,Math.max(o.dn,Math.exp(o.lf)));
+  o.price=r2(p2);o.lf=Math.log(o.price);
+  if(o.price>o.high)o.high=o.price;
+  if(o.price<o.low)o.low=o.price;
+ }
 }
 function closeDay(){
  M.phase='closed';

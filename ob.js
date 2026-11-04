@@ -1,4 +1,4 @@
-/* ob.js v56 —— 撮合量放大 5 倍 */
+/* ob.js v54 —— 成交分档累加资金四线 */
 (function(){
  function R(){return Math.random()}
  function c2(x){return Math.round(x*100)}
@@ -243,7 +243,7 @@
    }
    if(s._jpt>0){dirK+=s._jd*s._jm;}
    if(dirK>1.5)dirK=1.5;if(dirK<-1.5)dirK=-1.5;
-   var q=Math.round(baseQ(s)*(dirK*0.1+(R()-0.5)*0.02)*(s._pulse||1));
+   var q=Math.round(baseQ(s)*(dirK*0.003+(R()-0.5)*0.0015)*(s._pulse||1));
    if(UB){q+=Math.round(((UB[i]||0)-(US[i]||0))*UQK);}
    var traded=0;
    if(q>0)traded=sweep(s,1,q);else if(q<0)traded=sweep(s,-1,-q);
@@ -264,7 +264,7 @@
    }
    if(s.price>s.high)s.high=s.price;
    if(s.price<s.low)s.low=s.price;
-   h.p=s.price;
+   s.lf=Math.log(s.price);h.p=s.price;
    var lh=s._fl.hist[s._fl.hist.length-1];
    if(!(lh&&lh.t===M.minute)){s._fl.hist.push({xl:s._fl.xl,l:s._fl.l,m:s._fl.m,s:s._fl.s,t:M.minute});if(s._fl.hist.length>240)s._fl.hist.shift()}
    else{lh.xl=s._fl.xl;lh.l=s._fl.l;lh.m=s._fl.m;lh.s=s._fl.s}
